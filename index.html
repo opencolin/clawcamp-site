@@ -2205,6 +2205,8 @@
     <div class="section-divider">
       <span class="divider-label">May 2026</span>
       <div class="divider-line"></div>
+    </div>
+
     <a class="event-row" href="https://luma.com/clawcamp-weekly?tk=rV9paz" target="_blank" data-type="community" data-date="2026-05-04" data-city="san-francisco">
       <div class="event-date">
         <div class="date-day">4</div>
@@ -2914,6 +2916,8 @@
     <div class="section-divider">
       <span class="divider-label">June 2026</span>
       <div class="divider-line"></div>
+    </div>
+
     <a class="event-row" href="https://luma.com/li9q8pr2" target="_blank" data-type="community" data-date="2026-06-01" data-city="bentonville">
       <div class="event-date">
         <div class="date-day">1</div>
@@ -3513,65 +3517,86 @@ function renderEventRow(ev) {
 function renderEvents(events) {
   var main = document.getElementById('events-main');
 
-  // Preserve the pinned Nebius flagship card before clearing
-  var pinnedCards = main.querySelectorAll('.featured-flagship');
-  var pinnedFragment = document.createDocumentFragment();
-  pinnedCards.forEach(function(card) { pinnedFragment.appendChild(card); });
+  // Remove loading placeholder, but KEEP all static event rows in place
+  var loading = document.getElementById('events-loading');
+  if (loading) loading.remove();
 
-  // Remove loading message and hardcoded events
-  main.textContent = '';
+  // Collect normalized URLs from existing static rows so Supabase events that
+  // are already in the static list are deduplicated rather than re-rendered.
+  var existingUrls = {};
+  function normalizeHref(h) {
+    if (!h) return '';
+    return h.split('?')[0].split('#')[0].replace(/\/+$/, '').toLowerCase();
+  }
+  main.querySelectorAll('.event-row, .featured-event').forEach(function(row) {
+    var key = normalizeHref(row.getAttribute('href'));
+    if (key) existingUrls[key] = true;
+  });
 
-  // Re-insert pinned flagship cards at the top
-  main.appendChild(pinnedFragment);
+  // Only render Supabase events that aren't already represented statically.
+  var newEvents = events.filter(function(ev) {
+    var k = normalizeHref(ev.link);
+    return !(k && existingUrls[k]);
+  });
 
-  // Separate featured vs regular
-  var featured = events.filter(function(e) { return e.is_featured; });
-  var regular = events.filter(function(e) { return !e.is_featured; });
+  var featured = newEvents.filter(function(e) { return e.is_featured; });
+  var regular = newEvents.filter(function(e) { return !e.is_featured; });
 
-  // Render featured (chronological order)
+  // Featured at the top, chronological
   featured.sort(function(a, b) { return (a.event_date || '').localeCompare(b.event_date || ''); });
   featured.forEach(function(ev) {
-    main.appendChild(renderFeaturedEvent(ev));
+    var node = renderFeaturedEvent(ev);
+    // Insert after any pinned flagship card, otherwise at the top of main
+    var pinned = main.querySelector('.featured-flagship');
+    if (pinned && pinned.parentNode === main) pinned.after(node);
+    else main.insertBefore(node, main.firstChild);
   });
 
-  // Group regular by month
-  var months = {};
+  // Regular: drop each event into its month-section, creating the section if missing
   regular.forEach(function(ev) {
     var d = new Date(ev.event_date + 'T00:00:00');
-    var key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-    if (!months[key]) months[key] = [];
-    months[key].push(ev);
+    var monthIdx = d.getMonth();
+    var monthId = monthNames[monthIdx].toLowerCase();
+    var label = monthNames[monthIdx] + ' ' + d.getFullYear();
+    var section = document.getElementById(monthId);
+    if (!section) {
+      section = document.createElement('div');
+      section.className = 'month-section';
+      section.id = monthId;
+      var divider = document.createElement('div');
+      divider.className = 'section-divider';
+      var divLabel = document.createElement('span');
+      divLabel.className = 'divider-label';
+      divLabel.textContent = label;
+      divider.appendChild(divLabel);
+      var divLine = document.createElement('div');
+      divLine.className = 'divider-line';
+      divider.appendChild(divLine);
+      section.appendChild(divider);
+      // Insert section in chronological position
+      var sections = main.querySelectorAll('.month-section');
+      var inserted = false;
+      for (var i = 0; i < sections.length; i++) {
+        var sid = sections[i].id;
+        var idx = monthNames.indexOf(sid.charAt(0).toUpperCase() + sid.slice(1));
+        if (idx > monthIdx) {
+          main.insertBefore(section, sections[i]);
+          inserted = true;
+          break;
+        }
+      }
+      if (!inserted) main.appendChild(section);
+    }
+    section.appendChild(renderEventRow(ev));
   });
 
-  // Sort month keys
-  var sortedMonths = Object.keys(months).sort();
-
-  sortedMonths.forEach(function(key) {
-    var d = new Date(key + '-01T00:00:00');
-    var label = monthNames[d.getMonth()] + ' ' + d.getFullYear();
-    var monthId = monthNames[d.getMonth()].toLowerCase();
-
-    var section = document.createElement('div');
-    section.className = 'month-section';
-    section.id = monthId;
-
-    var divider = document.createElement('div');
-    divider.className = 'section-divider';
-    var divLabel = document.createElement('span');
-    divLabel.className = 'divider-label';
-    divLabel.textContent = label;
-    divider.appendChild(divLabel);
-    var divLine = document.createElement('div');
-    divLine.className = 'divider-line';
-    divider.appendChild(divLine);
-    section.appendChild(divider);
-
-    months[key].sort(function(a, b) { return a.event_date.localeCompare(b.event_date); });
-    months[key].forEach(function(ev) {
-      section.appendChild(renderEventRow(ev));
+  // After insertions, sort event-rows within each month-section by data-date asc
+  main.querySelectorAll('.month-section').forEach(function(section) {
+    var rows = Array.prototype.slice.call(section.querySelectorAll('.event-row'));
+    rows.sort(function(a, b) {
+      return (a.dataset.date || '').localeCompare(b.dataset.date || '');
     });
-
-    main.appendChild(section);
+    rows.forEach(function(row) { section.appendChild(row); });
   });
 }
 
@@ -3605,16 +3630,10 @@ fetch(SUPABASE_URL + '/rest/v1/events?select=*&order=event_date.asc', {
     var coords = cityCoords[cityParam];
     var label = cityParam.replace(/-/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
     setUserLocation(coords[0], coords[1], label);
-  } else if (navigator.geolocation) {
-    // Auto-detect location on load
-    navigator.geolocation.getCurrentPosition(
-      function(pos) {
-        setUserLocation(pos.coords.latitude, pos.coords.longitude, 'Your Location');
-      },
-      function() { /* silently fail */ },
-      { timeout: 10000 }
-    );
   }
+  // Auto-geolocation removed: it triggered a distance-based sort that scrambled
+  // chronological order and the 300mi filter hid most events. Users can still
+  // opt-in via the "Use My Location" button in the filters bar.
 })
 .catch(function(err) {
   console.error('Failed to load events:', err);
@@ -3738,17 +3757,9 @@ function applyFilters() {
     } else {
       typeMatch = type === currentTypeFilter;
     }
-    // Distance filter: only show events within 300 mi, or online events
-    var distMatch = true;
-    if (userLat && userLon) {
-      if (city === 'online') {
-        distMatch = true;
-      } else {
-        var dist = getDistanceForCity(city);
-        distMatch = (dist <= MAX_DISTANCE_KM);
-      }
-    }
-    row.style.display = (timeMatch && typeMatch && distMatch) ? '' : 'none';
+    // Distance is informational only (shown as a badge by sortEventsByDistance).
+    // Never hide events for being far away — users can scroll.
+    row.style.display = (timeMatch && typeMatch) ? '' : 'none';
   });
   document.querySelectorAll('#events-main .month-section').forEach(function(section) {
     var visible = section.querySelectorAll('.event-row:not([style*="display: none"])');
