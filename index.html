@@ -770,6 +770,31 @@
   .month-section:nth-child(2) { animation: fadeUp 0.4s 0.15s ease both; }
   .month-section:nth-child(3) { animation: fadeUp 0.4s 0.2s ease both; }
 
+  /* Recent Events */
+  .recent-events-heading {
+    padding: 64px 48px 0;
+    max-width: 800px;
+  }
+  .recent-events-heading h2 {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin-bottom: 8px;
+  }
+  .recent-events-heading h2 em { font-style: normal; color: var(--rust); }
+  .recent-events-heading > p {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 0;
+  }
+  #recent-events-main .event-row { opacity: 0.78; transition: opacity 0.15s ease; }
+  #recent-events-main .event-row:hover { opacity: 1; }
+  #recent-events-main .event-row .rsvp-btn { background: transparent; color: var(--muted); border: 1px solid var(--sand); }
+  #recent-events-main:empty { display: none; }
+  @media (max-width: 640px) {
+    .recent-events-heading { padding: 48px 20px 0; }
+  }
+
   /* Submit Event Form */
   .submit-event-section {
     padding: 48px 48px 0;
@@ -2481,6 +2506,13 @@
 
 </div>
 
+<!-- Recent Events -->
+<div class="recent-events-heading" id="recent-events">
+  <h2>Recent <em>Events</em></h2>
+  <p>What's been happening across the ClawCamp community.</p>
+</div>
+<div id="recent-events-main"></div>
+
 <div class="submit-event-section" id="submit-event">
   <h2>Submit an <em>Event</em></h2>
   <p>Running a ClawCamp event? Submit it here and we'll add it to the calendar.</p>
@@ -2893,6 +2925,7 @@ fetch(SUPABASE_URL + '/rest/v1/events?select=*&order=event_date.asc', {
   renderEvents(events);
   updateCounts();
   applyFilters();
+  buildRecentEvents();
   window._eventsRendered = true;
   showOaklandFeatured();
   // Populate hero map dots from live event data
@@ -2922,6 +2955,7 @@ fetch(SUPABASE_URL + '/rest/v1/events?select=*&order=event_date.asc', {
   if (loading) loading.style.display = 'none';
   updateCounts();
   applyFilters();
+  buildRecentEvents();
 });
 
 var currentTimeTab = 'upcoming';
@@ -3009,7 +3043,7 @@ var MAX_DISTANCE_KM = MAX_DISTANCE_MI * 1.60934; // ~483 km
 
 function applyFilters() {
   var today = getToday();
-  var allItems = document.querySelectorAll('.event-row, .featured-event');
+  var allItems = document.querySelectorAll('#events-main .event-row, #events-main .featured-event');
   allItems.forEach(function(row) {
     var date = row.dataset.date || '';
     var type = row.dataset.type || '';
@@ -3048,7 +3082,7 @@ function applyFilters() {
     }
     row.style.display = (timeMatch && typeMatch && distMatch) ? '' : 'none';
   });
-  document.querySelectorAll('.month-section').forEach(function(section) {
+  document.querySelectorAll('#events-main .month-section').forEach(function(section) {
     var visible = section.querySelectorAll('.event-row:not([style*="display: none"])');
     section.style.display = visible.length === 0 ? 'none' : '';
   });
@@ -3254,8 +3288,8 @@ if (navigator.geolocation) {
 function sortEventsByDistance() {
   if (!sortByDistance || !userLat) return;
 
-  var mainEl = document.querySelector('.main');
-  var allItems = Array.from(document.querySelectorAll('.event-row, .featured-event'));
+  var mainEl = document.getElementById('events-main');
+  var allItems = Array.from(document.querySelectorAll('#events-main .event-row, #events-main .featured-event'));
 
   allItems.forEach(function(row) {
     var city = row.dataset.city;
@@ -3315,13 +3349,14 @@ function sortEventsByDistance() {
     return (a.dataset.date || '').localeCompare(b.dataset.date || '');
   });
 
-  document.querySelectorAll('.month-section').forEach(function(s) { s.style.display = 'none'; });
+  document.querySelectorAll('#events-main .month-section').forEach(function(s) { s.style.display = 'none'; });
 
   allItems.forEach(function(row) {
     mainEl.appendChild(row);
   });
 
   applyFilters();
+  buildRecentEvents();
 }
 
 function setUserLocation(lat, lon, label) {
@@ -3407,9 +3442,76 @@ document.getElementById('location-input').addEventListener('keydown', function(e
   }
 });
 
+function buildRecentEvents() {
+  var container = document.getElementById('recent-events-main');
+  var heading = document.getElementById('recent-events');
+  if (!container) return;
+  container.innerHTML = '';
+
+  var today = getToday();
+  var rows = Array.prototype.slice.call(
+    document.querySelectorAll('#events-main .event-row[data-date]')
+  );
+  var past = rows.filter(function(r) {
+    var d = r.dataset.date || '';
+    return d && d < today;
+  });
+  // Reverse chronological: most recent first
+  past.sort(function(a, b) {
+    return (b.dataset.date || '').localeCompare(a.dataset.date || '');
+  });
+
+  if (past.length === 0) {
+    if (heading) heading.style.display = 'none';
+    container.style.display = 'none';
+    return;
+  }
+  if (heading) heading.style.display = '';
+  container.style.display = '';
+
+  var monthNames = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'];
+  var currentKey = '';
+  var currentSection = null;
+
+  past.forEach(function(row) {
+    var d = row.dataset.date || '';
+    var parts = d.split('-');
+    if (parts.length < 2) return;
+    var year = parts[0];
+    var monthIdx = parseInt(parts[1], 10) - 1;
+    var key = year + '-' + parts[1];
+
+    if (key !== currentKey) {
+      currentSection = document.createElement('div');
+      currentSection.className = 'month-section';
+      var divider = document.createElement('div');
+      divider.className = 'section-divider';
+      var label = document.createElement('span');
+      label.className = 'divider-label';
+      label.textContent = monthNames[monthIdx] + ' ' + year;
+      var line = document.createElement('div');
+      line.className = 'divider-line';
+      divider.appendChild(label);
+      divider.appendChild(line);
+      currentSection.appendChild(divider);
+      container.appendChild(currentSection);
+      currentKey = key;
+    }
+
+    var clone = row.cloneNode(true);
+    clone.removeAttribute('style'); // strip display:none from applyFilters
+    clone.classList.add('recent-event-clone');
+    // Soften CTA wording for past events
+    var btn = clone.querySelector('.event-action .rsvp-btn');
+    if (btn) btn.textContent = 'View →';
+    currentSection.appendChild(clone);
+  });
+}
+
 function updateCounts() {
   var today = getToday();
-  var allItems = document.querySelectorAll('.event-row, .featured-event');
+  var allItems = document.querySelectorAll('#events-main .event-row, #events-main .featured-event');
   var upcoming = 0, past = 0;
   allItems.forEach(function(row) {
     var date = row.dataset.date || '';
@@ -3433,6 +3535,12 @@ function switchTimeTab(tab, btn) {
   btn.classList.add('active');
   if (sortByDistance) sortEventsByDistance();
   else applyFilters();
+  // Hide the Recent Events section when viewing Past in the main list (avoid duplication)
+  var heading = document.getElementById('recent-events');
+  var container = document.getElementById('recent-events-main');
+  var show = (tab === 'upcoming');
+  if (heading) heading.style.display = show ? '' : 'none';
+  if (container) container.style.display = show ? '' : 'none';
 }
 
 function filterEvents(type, btn) {
