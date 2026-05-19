@@ -3743,6 +3743,18 @@ function renderEvents(events) {
 // remove permanently. Anon key can't DELETE due to RLS.
 var HIDDEN_EVENT_IDS = [171, 172]; // Both AI Book Club entries
 
+// Hide any statically-pinned featured card whose data-date is in the past.
+// Runs immediately so past featured events disappear before applyFilters runs.
+(function hidePastFeaturedCards() {
+  var today = getToday();
+  document.querySelectorAll('.featured-event[data-date]').forEach(function(card) {
+    if ((card.dataset.date || '') < today) {
+      card.style.display = 'none';
+      card.setAttribute('data-past', 'true');
+    }
+  });
+})();
+
 // Fetch events from Supabase
 fetch(SUPABASE_URL + '/rest/v1/events?select=*&order=event_date.asc', {
   headers: {
