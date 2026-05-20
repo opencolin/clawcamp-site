@@ -3315,6 +3315,11 @@ function renderEvents(events) {
   });
 }
 
+// Supabase event IDs to hide on the site (e.g., wrong-fit submissions).
+// Rows still exist in the DB — delete from the Supabase dashboard to remove
+// permanently. Anon key can't DELETE/UPDATE due to RLS.
+var HIDDEN_EVENT_IDS = [171, 172]; // Both AI Book Club entries
+
 // Fetch events from Supabase
 fetch(SUPABASE_URL + '/rest/v1/events?select=*&order=event_date.asc', {
   headers: {
@@ -3324,6 +3329,7 @@ fetch(SUPABASE_URL + '/rest/v1/events?select=*&order=event_date.asc', {
 })
 .then(function(res) { return res.json(); })
 .then(function(events) {
+  events = events.filter(function(e) { return HIDDEN_EVENT_IDS.indexOf(e.id) === -1; });
   renderEvents(events);
   updateCounts();
   applyFilters();
