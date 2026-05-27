@@ -186,6 +186,28 @@
   var currentFilter = 'all';
   var typeLabels = { workshop: 'Workshop', guide: 'Guide', tool: 'Tool', thread: 'Thread' };
 
+  // Statically-added tutorials/workshops. Use negative ids so they never
+  // collide with Supabase auto-increment ids. Add new entries here when the
+  // anon key can't INSERT (RLS-locked tutorials table).
+  var EXTRA_TUTORIALS = [
+    {
+      id: -1,
+      title: 'Build an Expert Agentic Slack Bot',
+      url: 'https://nebius.com/events/webinar-build-an-expert-agentic-slack-bot',
+      description: 'Webinar: deploy a Slack pricing assistant in under 15 minutes — no GPU required. Connect Tavily web search, Nebius Token Factory inference, and Slack messaging into a production-style agent workflow.',
+      author: 'Nebius',
+      item_type: 'workshop',
+      resource_type: 'tutorial',
+      tier: 'intermediate',
+      tags: ['Webinar', 'Nebius', 'Tavily', 'Slack'],
+      duration: '~60 min',
+      image_url: null,
+      is_featured: false,
+      stars: 0,
+      is_internal: false
+    }
+  ];
+
   function esc(s) {
     if (!s) return '';
     var d = document.createElement('div');
@@ -370,14 +392,24 @@
   })
   .then(function(r) { return r.json(); })
   .then(function(data) {
-    tutorials = data;
+    // Merge static EXTRA_TUTORIALS with Supabase results; dedupe by url so a
+    // static entry quietly steps aside if/when an admin adds the same row to DB.
+    var seenUrls = {};
+    data.forEach(function(t) { if (t.url) seenUrls[t.url] = true; });
+    var extras = EXTRA_TUTORIALS.filter(function(t) { return !(t.url && seenUrls[t.url]); });
+    tutorials = data.concat(extras);
     document.getElementById('loading-msg').style.display = 'none';
     updateCounts();
     renderFeatured();
     render();
   })
   .catch(function() {
-    document.getElementById('loading-msg').textContent = 'Failed to load tutorials.';
+    // Even on fetch failure, show the static extras so authors can still find them.
+    tutorials = EXTRA_TUTORIALS.slice();
+    document.getElementById('loading-msg').style.display = 'none';
+    updateCounts();
+    renderFeatured();
+    render();
   });
 
   clawAuth.getSession().then(function(result) {
