@@ -27,8 +27,8 @@ Until v1.0.0 ships, treat `contacts` as compromised.
 
 | Version | Slug | State | Branch | Worktree | Workflow runId |
 |---------|------|-------|--------|----------|----------------|
-| 1.0.0 | lockdown-and-versioning | 🟡 building | `release/1.0.0-lockdown-and-versioning` | `../clawcamp-worktrees/lockdown-and-versioning` | `wf_daa7adcd-bde` |
-| 1.1.0 | chapters-are-real | ⏳ planned | `release/1.1.0-chapters-are-real` | `../clawcamp-worktrees/chapters-are-real` | — |
+| 1.0.0 | lockdown-and-versioning | ✅ shipped (8809d72) | `release/1.0.0-lockdown-and-versioning` | `../clawcamp-worktrees/lockdown-and-versioning` | `wf_daa7adcd-bde` |
+| 1.1.0 | chapters-are-real | 🟡 building | `release/1.1.0-chapters-are-real` | `../clawcamp-worktrees/chapters-are-real` | _(launching)_ |
 | 1.2.0 | structured-content-and-moderation | ⏳ planned | `release/1.2.0-structured-content-and-moderation` | `../clawcamp-worktrees/structured-content-and-moderation` | — |
 | 1.3.0 | rsvp-and-identity | ⏳ planned | `release/1.3.0-rsvp-and-identity` | `../clawcamp-worktrees/rsvp-and-identity` | — |
 | 1.4.0 | rbac-and-captains-console | ⏳ planned | `release/1.4.0-rbac-and-captains-console` | `../clawcamp-worktrees/rbac-and-captains-console` | — |
@@ -72,3 +72,7 @@ git worktree list
 - t2 — council DONE. Wrote ROADMAP + 7 plan docs + council record. Created 7
   worktrees/branches, pushed all. Launching v1.0.0 build workflow.
 - t3 — v1.0.0 build workflow `wf_daa7adcd-bde` launched (worktree-isolated producers). Rescheduled tick.
+- t4 — v1.0.0 build DONE (4 worktree-isolated slices). Applied 11 new files +
+  38 edits to release worktree, fixed verifier gap (dashboard config.js include),
+  committed 8809d72, merged to master + pushed (DEPLOYED). ⚠️ RLS migration
+  0001 still needs server-side apply (see v1.0.0 plan doc). Launching v1.1.0.
