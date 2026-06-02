@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.0 — Decompose the Event + the Moderation Gate
+
+- events.status moderation enum + event_speakers/event_schedule/event_sponsors
+  tables (migration 0003); submit-event posts to a service-role Edge Function;
+  detail page reads child tables DB-first with EVENT_EXTRAS fallback; /admin
+  review page; public lists filtered to approved; per-event OG/JSON-LD;
+  stored-XSS Playwright regression test.
+
 ## 1.1.0 — Chapters Become Data + first CI gate
 
 - chapters table (migration 0002) + events.chapter_id FK; chapters page renders
