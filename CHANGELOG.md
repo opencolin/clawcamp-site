@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0 — Chapters Become Data + first CI gate
+
+- chapters table (migration 0002) + events.chapter_id FK; chapters page renders
+  from the DB with a static fallback; per-chapter pages at /chapters/?slug=X.
+- Events directory chapter filter.
+- First CI gate (.github/workflows/ci.yml) running the RLS probe + smoke check.
+- Renamed: "Other Events" → "Online Events", "ClawCamp SF, CA" → "ClawCamp San Francisco".
+
 All notable changes to ClawCamp are recorded here.
 
 Convention: we hand-bump the `VERSION` file on every release and add a matching
