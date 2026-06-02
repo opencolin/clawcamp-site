@@ -3,16 +3,24 @@
 # scripts/rls-probe.sh — RLS lockdown assertions for `contacts` + `chapters`
 #                        + v1.2.0 events moderation gate + event_* child tables
 #                        + v1.3.0 rsvps roster + profiles + media storage
+#                        + v1.4.0 memberships RBAC + chapter_follows + events
+#                          UPDATE gate
 # ===========================================================================
 # WHAT: curl-based, anon-key probe that asserts the v1.0.0 contacts lockdown
 #       (supabase/migrations/0001_baseline.sql) is actually in effect in prod,
 #       that (since v1.1.0) anon CANNOT write the `chapters` table, that
 #       (since v1.2.0, supabase/migrations/0003_event_content_and_status.sql)
 #       anon CANNOT write the new event_speakers / event_schedule /
-#       event_sponsors child tables and CANNOT read non-approved events, and
-#       that (since v1.3.0) anon CANNOT raw-insert or read the `rsvps` roster,
+#       event_sponsors child tables and CANNOT read non-approved events, that
+#       (since v1.3.0) anon CANNOT raw-insert or read the `rsvps` roster,
 #       CANNOT write another user's `media` storage folder, and that `profiles`
-#       exposes no private fields.
+#       exposes no private fields, and that (since v1.4.0,
+#       supabase/migrations/0006_memberships_rbac.sql +
+#       0007_follows_and_capacity.sql) anon CANNOT self-grant a role by writing
+#       `memberships`, CANNOT read the roles in `memberships`, CANNOT raw-insert
+#       into `chapter_follows`, and CANNOT use the new events UPDATE policy to
+#       PATCH an event (the privilege-escalation guard the v1.4 exit criteria
+#       demand).
 #
 # CONTRACT: this script FAILS before the lockdown is applied and PASSES after.
 #   (a) anon GET  /rest/v1/contacts?select=*  must NOT return contact rows —
@@ -59,6 +67,29 @@
 #       another user's profile-PRIVATE fields" as "there are no private fields
 #       to read." Pass on 200-with-only-public-fields, an empty array, or 404
 #       pre-migration; FAIL if a private field name appears in the body.
+#   (j) anon POST /rest/v1/memberships must be denied — expect 401 or 403 (NOT a
+#       2xx that inserted). memberships (migration 0006) grants anon NO write and
+#       authenticated NO write at all; roles are granted out-of-band by an admin
+#       in the SQL console. A raw anon insert (e.g. role:'captain' for some uid)
+#       must be rejected — any 2xx means a hostile client could SELF-GRANT a role
+#       and is a hard FAIL (the headline no-self-promote exit criterion). A 404
+#       means the table isn't applied yet (out-of-band) — PASS-with-WARN.
+#   (k) anon GET /rest/v1/memberships?select=* must NOT return rows — roles must
+#       not be world-readable. Modeled on (g): PASS on 401/403, an empty array,
+#       or 404 pre-migration; FAIL on a 200 with a non-empty body.
+#   (l) anon POST /rest/v1/chapter_follows must be denied — expect 401 or 403
+#       (NOT a 2xx that inserted). chapter_follows (migration 0007) grants anon
+#       NO write; the ONLY writer is the submit-follow Edge Function (service-role
+#       key), mirroring the rsvps lockdown in (f). A 404 (table not applied yet)
+#       is PASS-with-WARN; any 2xx FAILS.
+#   (m) anon PATCH /rest/v1/events?id=eq.<n> with {"status":"approved"} must be
+#       denied — expect 401 or 403 (NOT a 2xx/204 that updated). This proves the
+#       events UPDATE policy added in 0006 (events_update_admin_or_captain) does
+#       NOT leak write access to a hostile anon client: the policy is TO
+#       authenticated and both role helpers return false for anon, so the gate
+#       never authorizes an anon write. This is the privilege-escalation guard
+#       the v1.4 exit criteria demand. A 404 means events isn't applied yet —
+#       PASS-with-WARN; any 2xx is the breach and FAILS.
 #
 # Exits non-zero on ANY failed assertion (CI-gate friendly).
 #
@@ -202,8 +233,10 @@ echo
 # state. A 2xx (the row was inserted) is the only true breach and always FAILS.
 # ---------------------------------------------------------------------------
 probe_child_write_denied() {
-  # $1 = table name, $2 = label, $3 = JSON body
-  local table="$1" label="$2" body="$3" code
+  # $1 = table name, $2 = label, $3 = JSON body, $4 = (optional) migration hint
+  # for the 404 PASS-with-WARN message (defaults to 0003 — the original event_*
+  # child tables; newer callers pass their own migration number).
+  local table="$1" label="$2" body="$3" migration="${4:-0003}" code
   echo "[${label}] anon POST /rest/v1/${table} (insert junk child row)"
   code="$(curl -s -o /dev/null -w '%{http_code}' \
     -X POST \
@@ -217,7 +250,7 @@ probe_child_write_denied() {
   if [ "$code" = "401" ] || [ "$code" = "403" ]; then
     pass "(${label}) anon POST to ${table} denied with HTTP ${code}"
   elif [ "$code" = "404" ]; then
-    pass "(${label}) anon POST to ${table} returned HTTP 404 — table not applied yet, write impossible (WARN: apply migration 0003)"
+    pass "(${label}) anon POST to ${table} returned HTTP 404 — table not applied yet, write impossible (WARN: apply migration ${migration})"
   elif [ "${code#2}" != "$code" ]; then
     fail "(${label}) anon POST to ${table} returned HTTP ${code} — the row was INSERTED; anon can write ${table}"
   else
@@ -372,13 +405,111 @@ fi
 echo
 
 # ---------------------------------------------------------------------------
+# Assertion (j): anon raw-INSERT on memberships must be denied (no self-grant).
+# memberships (migration 0006) grants anon NO write AND authenticated NO write —
+# roles are granted out-of-band by an admin in the SQL console, never by the
+# client. A raw anon POST trying to grant a role (here role:'captain' for a
+# placeholder uid on chapter 1) must be rejected outright (401/403), never a 2xx
+# that inserted. A 2xx would mean a hostile client could SELF-PROMOTE — the
+# headline no-self-promote breach — and always FAILS. A 404 means the table
+# isn't applied yet (migrations apply out-of-band) — PASS-with-WARN. This reuses
+# the exact service-role-only-insert helper used for the event_* / rsvps tables.
+# ---------------------------------------------------------------------------
+probe_child_write_denied "memberships" "j" '{"profile_id":"00000000-0000-0000-0000-000000000000","chapter_id":1,"role":"captain"}' "0006"
+
+# ---------------------------------------------------------------------------
+# Assertion (k): anon must NOT be able to read the memberships roles.
+# memberships holds who-is-captain/admin; anon gets NO select. Roles must not be
+# world-readable (an attacker should not be able to enumerate who can approve
+# events). We model this on the rsvps roster probe in (g): 401/403 (denied), an
+# empty array (RLS hides all rows), or 404 pre-migration are all safe; a 200
+# with a non-empty body of rows FAILS.
+# ---------------------------------------------------------------------------
+echo "[k] anon GET /rest/v1/memberships?select=*"
+MEMBERSHIPS_RESP="$(curl -s -w $'\n%{http_code}' \
+  "${SUPABASE_URL}/rest/v1/memberships?select=*&limit=5" \
+  -H "apikey: ${SUPABASE_ANON_KEY}" \
+  -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")"
+MEMBERSHIPS_CODE="$(printf '%s' "$MEMBERSHIPS_RESP" | tail -n1)"
+MEMBERSHIPS_BODY="$(printf '%s' "$MEMBERSHIPS_RESP" | sed '$d')"
+
+if [ "$MEMBERSHIPS_CODE" = "404" ]; then
+  pass "(k) memberships read returned HTTP 404 — memberships table not applied yet, roles unreadable (WARN: apply migration 0006)"
+elif [ "$MEMBERSHIPS_CODE" = "401" ] || [ "$MEMBERSHIPS_CODE" = "403" ]; then
+  pass "(k) anon read of memberships denied with HTTP ${MEMBERSHIPS_CODE}"
+elif [ "$MEMBERSHIPS_CODE" = "200" ] && printf '%s' "$MEMBERSHIPS_BODY" | tr -d '[:space:]' | grep -qE '^\[\]$'; then
+  pass "(k) anon read of memberships returned an empty array (RLS hides all rows)"
+elif [ "$MEMBERSHIPS_CODE" = "200" ]; then
+  fail "(k) anon read of memberships returned HTTP 200 with a non-empty body — roles are world-readable: ${MEMBERSHIPS_BODY:0:200}"
+else
+  fail "(k) unexpected HTTP ${MEMBERSHIPS_CODE} from anon memberships read — body: ${MEMBERSHIPS_BODY:0:200}"
+fi
+echo
+
+# ---------------------------------------------------------------------------
+# Assertion (l): anon raw-INSERT on chapter_follows must be denied.
+# chapter_follows (migration 0007) grants anon NO write — the ONLY writer is the
+# submit-follow Edge Function (service-role key). A raw anon POST must be
+# rejected outright (401/403), never a 2xx that inserted. A 404 means the table
+# isn't applied yet (out-of-band) — PASS-with-WARN. Same service-role-only-insert
+# helper as the rsvps lockdown in (f).
+# ---------------------------------------------------------------------------
+probe_child_write_denied "chapter_follows" "l" '{"chapter_id":1,"email":"rls-probe@claw.camp"}' "0007"
+
+# ---------------------------------------------------------------------------
+# Assertion (m): anon must NOT be able to PATCH an event via the new UPDATE gate.
+# Migration 0006 adds events_update_admin_or_captain — the FIRST UPDATE policy on
+# events. It is TO authenticated and gated on is_claw_admin()/is_chapter_role(),
+# both of which return false for an anon caller (auth.uid() is NULL), so a
+# hostile anon PATCH must be denied (401/403), never a 2xx/204 that flipped a
+# status. This is the privilege-escalation guard: it proves the new write policy
+# did not accidentally open events to the public client.
+# The ONLY breach is a 2xx (the row was UPDATED) — that always FAILS. Every
+# non-2xx means no anon write landed:
+#   * 401/403 — the clean post-migration deny (the UPDATE policy is TO
+#     authenticated; both role helpers are false for anon). This is the target.
+#   * 404 — the events route isn't applied yet (out-of-band) — PASS-with-WARN.
+#   * 400 — PASS-with-WARN: PostgREST rejected the body before any write, e.g.
+#     PGRST204 "Could not find the 'status' column" when migration 0003 (which
+#     adds events.status) isn't applied yet. We deliberately PATCH `status` (the
+#     column the real /admin approve/reject + captain console write) so this
+#     probe tracks the actual moderation write; pre-migration that column may be
+#     absent, which is a no-write 400, NOT a breach (same way assertion (h)
+#     accepts 400 as a deny state). No write landed, so the gate did not leak.
+# We target a placeholder id; a locked-down API rejects the request regardless of
+# whether the row exists.
+# ---------------------------------------------------------------------------
+echo "[m] anon PATCH /rest/v1/events?id=eq.<n> {\"status\":\"approved\"}"
+EVENTS_PATCH_CODE="$(curl -s -o /dev/null -w '%{http_code}' \
+  -X PATCH \
+  "${SUPABASE_URL}/rest/v1/events?id=eq.999999999" \
+  -H "apikey: ${SUPABASE_ANON_KEY}" \
+  -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+  -H "Content-Type: application/json" \
+  -H "Prefer: return=minimal" \
+  -d '{"status":"approved"}')"
+
+if [ "$EVENTS_PATCH_CODE" = "401" ] || [ "$EVENTS_PATCH_CODE" = "403" ]; then
+  pass "(m) anon PATCH of events denied with HTTP ${EVENTS_PATCH_CODE} (events UPDATE gate does not leak to anon)"
+elif [ "$EVENTS_PATCH_CODE" = "404" ]; then
+  pass "(m) anon PATCH of events returned HTTP 404 — events route not applied yet, write impossible (WARN: apply migrations 0003+0006)"
+elif [ "$EVENTS_PATCH_CODE" = "400" ]; then
+  pass "(m) anon PATCH of events returned HTTP 400 — body rejected before any write (e.g. events.status column not applied yet); no write landed (WARN: apply migrations 0003+0006)"
+elif [ "${EVENTS_PATCH_CODE#2}" != "$EVENTS_PATCH_CODE" ]; then
+  fail "(m) anon PATCH of events returned HTTP ${EVENTS_PATCH_CODE} — the row was UPDATED; the events UPDATE gate leaks write access to anon"
+else
+  fail "(m) anon PATCH of events returned unexpected HTTP ${EVENTS_PATCH_CODE} (expected 401/403, or 400/404 pre-migration)"
+fi
+echo
+
+# ---------------------------------------------------------------------------
 # Summary / exit code
 # ---------------------------------------------------------------------------
 echo "----------------------------------------"
 echo "RLS probe: ${PASS} passed, ${FAIL} failed."
 if [ "$FAIL" -ne 0 ]; then
-  echo "RESULT: FAIL — RLS lockdown is NOT fully in effect (contacts, chapters, events, event_* child tables, rsvps, profiles, and/or media storage). Apply the migrations."
+  echo "RESULT: FAIL — RLS lockdown is NOT fully in effect (contacts, chapters, events, event_* child tables, rsvps, profiles, media storage, memberships, and/or chapter_follows). Apply the migrations."
   exit 1
 fi
-echo "RESULT: PASS — contacts is locked down, anon cannot write chapters, anon cannot write the event_* child tables, anon reads ONLY approved events, anon cannot raw-insert or read the rsvps roster, anon cannot write another user's media storage folder, and profiles exposes no private fields."
+echo "RESULT: PASS — contacts is locked down, anon cannot write chapters, anon cannot write the event_* child tables, anon reads ONLY approved events, anon cannot raw-insert or read the rsvps roster, anon cannot write another user's media storage folder, profiles exposes no private fields, anon cannot self-grant a role or read the memberships roles, anon cannot raw-insert a chapter_follow, and the events UPDATE gate does not leak write access to anon."
 exit 0

@@ -9,6 +9,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bricolage+Grotesque:wght@300;400;600;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/shared.css">
+<!-- Captains console styles (owned by the captains-console slice). The
+     dashboard works without it; if absent, the empty #captains-console-root
+     mount simply renders nothing. -->
+<link rel="stylesheet" href="/js/captains-console.css">
 <style>
   .dash-loading {
     min-height: 60vh;
@@ -287,6 +291,7 @@
     vertical-align: middle;
   }
   .dash-role-badge.captain { background: var(--rust); color: white; }
+  .dash-role-badge.admin { background: var(--ink); color: white; }
 
   /* Hero actions */
   .dash-hero-actions {
@@ -301,6 +306,90 @@
   /* My Chapters empty state */
   .dash-empty-msg { font-size: 14px; color: var(--muted); line-height: 1.6; }
   .dash-empty-msg a { color: var(--rust); }
+
+  /* My Chapters — followed list */
+  .my-chapters-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .my-chapter-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border: 1px solid var(--sand);
+    border-radius: 8px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .my-chapter-item:hover { border-color: var(--ink); background: var(--cream); }
+  .my-chapter-emoji { font-size: 22px; flex-shrink: 0; }
+  .my-chapter-body { flex: 1; min-width: 0; }
+  .my-chapter-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .my-chapter-name:hover { color: var(--rust); }
+  .my-chapter-city { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .my-chapter-unfollow {
+    flex-shrink: 0;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    background: none;
+    border: 1px solid var(--sand);
+    border-radius: 20px;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .my-chapter-unfollow:hover { border-color: var(--rust); color: var(--rust); }
+  .my-chapter-unfollow:disabled { opacity: 0.5; cursor: default; }
+
+  /* Follow feed — upcoming events from followed chapters */
+  .follow-feed-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .follow-feed-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+    border: 1px solid var(--sand);
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--ink);
+    transition: border-color 0.15s, background 0.15s, transform 0.15s;
+  }
+  .follow-feed-item:hover {
+    border-color: var(--ink);
+    background: var(--cream);
+    transform: translateY(-1px);
+  }
+  .follow-feed-date {
+    flex-shrink: 0;
+    text-align: center;
+    width: 52px;
+    font-family: 'DM Mono', monospace;
+    line-height: 1.1;
+  }
+  .follow-feed-date .ff-month {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--rust);
+  }
+  .follow-feed-date .ff-day { font-size: 20px; font-weight: 500; }
+  .follow-feed-body { flex: 1; min-width: 0; }
+  .follow-feed-name { font-size: 14px; font-weight: 600; }
+  .follow-feed-city { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
   /* Profile form */
   .profile-form { display: flex; flex-direction: column; gap: 28px; max-width: 740px; }
@@ -439,6 +528,21 @@
       <p class="dash-empty-msg">You&rsquo;re not part of any chapters yet &mdash; <a href="/chapters">search for one to follow</a>, or start your own above.</p>
       <a href="/chapters" class="btn-outline" style="margin-top:12px;display:inline-block;font-size:13px;padding:8px 18px;">&#128269; Search Chapters to follow</a>
     </div>
+  </div>
+
+  <!-- Captains console mount point. OWNED BY THE captains-console SLICE: this
+       div is intentionally EMPTY here. /js/captains-console.js self-boots off
+       this node + the global clawAuth and injects its own UI. If that script /
+       its CSS are absent, this empty div renders nothing (graceful). -->
+  <div id="captains-console-root"></div>
+
+  <!-- From your chapters — upcoming approved events from followed chapters.
+       Hidden by default; the loader reveals it only when there's something to
+       show, and re-hides it on null/404/error so a missing migration can't
+       render a broken card. -->
+  <div class="dash-section" id="follow-feed-section" style="display:none;">
+    <div class="dash-section-title">&#128276; From your chapters</div>
+    <div id="follow-feed-content"></div>
   </div>
 
   <div class="dash-section">
@@ -682,6 +786,10 @@
 <script src="/js/config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106.2/dist/umd/supabase.js" integrity="sha384-m/8UHFJHeU6nrCKP2hBnAseuvAKUmLF+8e5bWos5CJL023vuxX7kiVL5t8yjsJhV" crossorigin="anonymous"></script>
 <script src="/js/auth.js"></script>
+<!-- Captains console (owned by the captains-console slice). Loaded after
+     auth.js so the global clawAuth exists; self-boots off #captains-console-root.
+     defer + graceful-absence: if the file 404s, the dashboard is unaffected. -->
+<script src="/js/captains-console.js" defer></script>
 <script>
 (function() {
   var loadingEl = document.getElementById('dash-loading');
@@ -1061,6 +1169,274 @@
     });
   };
 
+  // ---------- My Chapters (real follows) ----------
+  // Restores the original empty-state markup (placeholder + "Search Chapters to
+  // follow" link), built with createElement only. Used as the graceful fallback
+  // (no session / table absent / error) AND when the user unfollows their last
+  // chapter. Mirrors the static HTML this section ships with.
+  function renderMyChaptersEmpty() {
+    var container = document.getElementById('my-chapters-content');
+    if (!container) return;
+    container.textContent = '';
+    var p = document.createElement('p');
+    p.className = 'dash-empty-msg';
+    p.appendChild(document.createTextNode('You’re not part of any chapters yet — '));
+    var inlineLink = document.createElement('a');
+    inlineLink.href = '/chapters';
+    inlineLink.textContent = 'search for one to follow';
+    p.appendChild(inlineLink);
+    p.appendChild(document.createTextNode(', or start your own above.'));
+    container.appendChild(p);
+    var searchLink = document.createElement('a');
+    searchLink.href = '/chapters';
+    searchLink.className = 'btn-outline';
+    searchLink.style.marginTop = '12px';
+    searchLink.style.display = 'inline-block';
+    searchLink.style.fontSize = '13px';
+    searchLink.style.padding = '8px 18px';
+    searchLink.textContent = '🔍 Search Chapters to follow';
+    container.appendChild(searchLink);
+  }
+
+  // Build one followed-chapter row (emoji + name link + city + Unfollow).
+  // Every user-supplied string goes through textContent — never innerHTML.
+  function renderMyChapterItem(row) {
+    var ch = row.chapters || {};
+    var item = document.createElement('div');
+    item.className = 'my-chapter-item';
+
+    var emoji = document.createElement('span');
+    emoji.className = 'my-chapter-emoji';
+    emoji.textContent = ch.emoji || '🌍';
+    item.appendChild(emoji);
+
+    var body = document.createElement('div');
+    body.className = 'my-chapter-body';
+    var nameLink = document.createElement('a');
+    nameLink.className = 'my-chapter-name';
+    nameLink.textContent = ch.name || 'Chapter';
+    if (ch.slug) {
+      nameLink.href = '/chapters/?slug=' + encodeURIComponent(ch.slug);
+    } else {
+      nameLink.href = '/chapters';
+    }
+    body.appendChild(nameLink);
+    if (ch.city) {
+      var city = document.createElement('div');
+      city.className = 'my-chapter-city';
+      city.textContent = ch.city;
+      body.appendChild(city);
+    }
+    item.appendChild(body);
+
+    var btn = document.createElement('button');
+    btn.className = 'my-chapter-unfollow';
+    btn.type = 'button';
+    btn.textContent = 'Unfollow';
+    btn.addEventListener('click', function() {
+      btn.disabled = true;
+      btn.textContent = '...';
+      // RLS chapter_follows_delete_own confines this DELETE to the caller's own
+      // rows; return=minimal keeps the response body empty.
+      dashAuthFetch(SUPABASE_URL + '/rest/v1/chapter_follows?id=eq.' + encodeURIComponent(row.id), {
+        method: 'DELETE',
+        headers: { 'Prefer': 'return=minimal' }
+      }).then(function(r) {
+        if (r && r.ok) {
+          var list = item.parentNode;
+          item.parentNode.removeChild(item);
+          // If that was the last followed chapter, restore the empty state.
+          if (list && !list.querySelector('.my-chapter-item')) {
+            renderMyChaptersEmpty();
+          }
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'Unfollow';
+        }
+      }).catch(function() {
+        btn.disabled = false;
+        btn.textContent = 'Unfollow';
+      });
+    });
+    item.appendChild(btn);
+    return item;
+  }
+
+  // Fetch the user's follows joined to chapter data and render the list.
+  // Resolves to the array of follow rows (so loadFollowFeed can reuse the
+  // chapter_ids without a second round-trip), or null on the graceful-fallback
+  // paths (no session / 404 table absent / error) — in which case the existing
+  // placeholder markup is left exactly as-is.
+  function loadMyChapters() {
+    return dashAuthFetch(SUPABASE_URL + '/rest/v1/chapter_follows?select=id,chapter_id,chapters(slug,name,city,emoji)&order=created_at.desc', {
+      headers: {}
+    }).then(function(r) {
+      if (!r) return null;            // no session
+      if (r.status === 404) return null; // chapter_follows absent (migration 0007)
+      if (!r.ok) return null;
+      return r.json();
+    }).then(function(rows) {
+      if (rows === null) return null; // leave placeholder untouched
+      if (!rows.length) { renderMyChaptersEmpty(); return rows; }
+      var container = document.getElementById('my-chapters-content');
+      if (!container) return rows;
+      container.textContent = '';
+      var list = document.createElement('div');
+      list.className = 'my-chapters-list';
+      rows.forEach(function(row) { list.appendChild(renderMyChapterItem(row)); });
+      container.appendChild(list);
+      // Keep the "Search Chapters to follow" affordance available.
+      var searchLink = document.createElement('a');
+      searchLink.href = '/chapters';
+      searchLink.className = 'btn-outline';
+      searchLink.style.display = 'inline-block';
+      searchLink.style.fontSize = '13px';
+      searchLink.style.padding = '8px 18px';
+      searchLink.textContent = '🔍 Search Chapters to follow';
+      container.appendChild(searchLink);
+      return rows;
+    }).catch(function() { return null; });
+  }
+
+  // ---------- Role badge (server fact, not client guess) ----------
+  // Reads the caller's memberships and sets the badge to the highest role
+  // present (admin > captain > member). Graceful fallback: null/404/empty/error
+  // leaves the default 'member' text + class untouched, so an absent memberships
+  // table (migration 0006) never breaks the dashboard.
+  function loadRoleBadge(uid) {
+    if (!uid) return;
+    dashAuthFetch(SUPABASE_URL + '/rest/v1/memberships?select=role&profile_id=eq.' + encodeURIComponent(uid), {
+      headers: {}
+    }).then(function(r) {
+      if (!r) return null;
+      if (r.status === 404) return null; // memberships absent
+      if (!r.ok) return null;
+      return r.json();
+    }).then(function(rows) {
+      if (!rows || !rows.length) return; // keep default 'member'
+      var rank = { member: 1, captain: 2, admin: 3 };
+      var best = 'member';
+      rows.forEach(function(row) {
+        var role = row && row.role;
+        if (role && rank[role] && rank[role] > rank[best]) best = role;
+      });
+      var badge = document.getElementById('dash-role-badge');
+      if (!badge) return;
+      badge.textContent = best; // textContent only — never innerHTML
+      badge.classList.remove('captain', 'admin');
+      if (best === 'admin') badge.classList.add('admin');
+      else if (best === 'captain') badge.classList.add('captain');
+    }).catch(function() { /* keep default 'member' */ });
+  }
+
+  // ---------- From your chapters (follow feed) ----------
+  // Two helpers for the date chip, formatted from the stored event_date string
+  // without constructing markup.
+  var _ffMonths = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function ffDateParts(eventDate) {
+    // event_date is an ISO date ('YYYY-MM-DD' or full timestamp). Parse the
+    // calendar parts directly to avoid timezone drift on the day number.
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(eventDate || ''));
+    if (!m) return null;
+    var monthIdx = parseInt(m[2], 10) - 1;
+    return { month: _ffMonths[monthIdx] || '', day: String(parseInt(m[3], 10)) };
+  }
+
+  function renderFollowFeedEmpty() {
+    var container = document.getElementById('follow-feed-content');
+    if (!container) return;
+    container.textContent = '';
+    var p = document.createElement('p');
+    p.className = 'dash-empty-msg';
+    p.textContent = 'Follow a chapter to see its upcoming events here.';
+    container.appendChild(p);
+  }
+
+  function renderFollowFeedItem(ev) {
+    var item = document.createElement('a');
+    item.className = 'follow-feed-item';
+    item.href = '/events/detail/?id=' + encodeURIComponent(ev.id != null ? ev.id : '');
+
+    var parts = ffDateParts(ev.event_date);
+    if (parts) {
+      var dateEl = document.createElement('div');
+      dateEl.className = 'follow-feed-date';
+      var month = document.createElement('div');
+      month.className = 'ff-month';
+      month.textContent = parts.month;
+      var day = document.createElement('div');
+      day.className = 'ff-day';
+      day.textContent = parts.day;
+      dateEl.appendChild(month);
+      dateEl.appendChild(day);
+      item.appendChild(dateEl);
+    }
+
+    var body = document.createElement('div');
+    body.className = 'follow-feed-body';
+    var name = document.createElement('div');
+    name.className = 'follow-feed-name';
+    name.textContent = ev.name || 'Event';
+    body.appendChild(name);
+    if (ev.city) {
+      var city = document.createElement('div');
+      city.className = 'follow-feed-city';
+      city.textContent = ev.city;
+      body.appendChild(city);
+    }
+    item.appendChild(body);
+    return item;
+  }
+
+  // Lists upcoming APPROVED events from followed chapters. Reuses the follow
+  // rows from loadMyChapters (passed in) to derive chapter_ids without a second
+  // call. Graceful fallback: if follows came back null (no session / table
+  // absent / error), or the events read 404s/errors, the section stays hidden.
+  // Shows a tasteful empty state when there are no follows or no upcoming events.
+  function loadFollowFeed(followRows) {
+    var section = document.getElementById('follow-feed-section');
+    if (!section) return;
+    if (followRows === null) { section.style.display = 'none'; return; } // can't read -> hide
+    var ids = [];
+    (followRows || []).forEach(function(row) {
+      if (row && row.chapter_id != null) ids.push(row.chapter_id);
+    });
+    if (!ids.length) {
+      // No followed chapters: tasteful empty state.
+      renderFollowFeedEmpty();
+      section.style.display = '';
+      return;
+    }
+    var today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    var encodedIds = ids.map(function(id) { return encodeURIComponent(id); }).join(',');
+    var url = SUPABASE_URL + '/rest/v1/events?select=id,name,event_date,city,chapter_id' +
+      '&status=eq.approved' +
+      '&chapter_id=in.(' + encodedIds + ')' +
+      '&event_date=gte.' + today +
+      '&order=event_date.asc&limit=20';
+    dashAuthFetch(url, { headers: {} }).then(function(r) {
+      if (!r) return null;
+      if (r.status === 404) return null; // events table issue -> hide
+      if (!r.ok) return null;
+      return r.json();
+    }).then(function(events) {
+      if (events === null) { section.style.display = 'none'; return; }
+      if (!events.length) {
+        renderFollowFeedEmpty();
+        section.style.display = '';
+        return;
+      }
+      var container = document.getElementById('follow-feed-content');
+      if (!container) return;
+      container.textContent = '';
+      var list = document.createElement('div');
+      list.className = 'follow-feed-list';
+      events.forEach(function(ev) { list.appendChild(renderFollowFeedItem(ev)); });
+      container.appendChild(list);
+      section.style.display = '';
+    }).catch(function() { section.style.display = 'none'; });
+  }
+
   function showDashboard(email, name, uid) {
     loadingEl.style.display = 'none';
     contentEl.style.display = '';
@@ -1072,6 +1448,10 @@
     updateAvatarInitials(name || email);
     loadPrefs(email);
     loadProfile(uid, email);
+    loadRoleBadge(uid);
+    // Reuse the follow rows from My Chapters to drive the feed (avoids a second
+    // chapter_follows round-trip). loadFollowFeed handles the null/empty cases.
+    loadMyChapters().then(function(followRows) { loadFollowFeed(followRows); });
   }
 
   // Sign out
