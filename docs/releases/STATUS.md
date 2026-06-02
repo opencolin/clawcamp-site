@@ -77,3 +77,4 @@ git worktree list
   committed 8809d72, merged to master + pushed (DEPLOYED). ⚠️ RLS migration
   0001 still needs server-side apply (see v1.0.0 plan doc). Launching v1.1.0.
 - t5 — v1.1.0 build wf_5f6f040c-45d launched, repo arg pointed at the v1.1.0 worktree (lands on the right branch directly). Rescheduled tick.
+- t5b — User rename: 'Other Events' → 'Online Events' on /chapters (master, deployed). NOTE for v1.1.0 apply: when chapters becomes data-driven, seed the catch-all row as 'Online Events' (slug online-events), not 'Other Events'.
