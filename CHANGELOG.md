@@ -1,5 +1,42 @@
 # Changelog
 
+## 2.0.0 — The Self-Running Multi-Chapter Network
+
+The milestone release: ClawCamp is now a real self-serve, self-moderating
+multi-chapter platform that a non-engineer can run end to end. Six slices:
+
+- **Self-serve chapter provisioning.** Approving a "Start a Chapter" application
+  now auto-creates a live `chapters` row in `status='forming'` and grants the
+  applicant the `captain` membership via the `provision-chapter` Edge Function —
+  zero manual DB editing (migration 0009).
+- **Static data retired.** `js/event-extras.js` and the hardcoded chapter-card
+  fallbacks are deleted; the site renders entirely from Supabase tables (with a
+  minimal loading/empty state so a page is never blank), and no `events.notes`
+  content-stuffing remains.
+- **Map + search discovery.** `/events` and `/chapters` reuse `js/clawcamp-map.js`
+  to plot chapters/events by lat/lng, closing the "no map, no cross-event search"
+  gaps.
+- **Engagement + networks.** New-event-from-a-followed-chapter and RSVP-reminder
+  notifications (`notify-engagement`, gated by dashboard email prefs), an opt-in
+  per-chapter member directory (`profiles.directory_opt_in`, off by default),
+  and a private captain health dashboard (follower growth, RSVP conversion,
+  attendance) — public momentum framed as "this city is forming", never a
+  ranking.
+- **The quality wall + CSP.** CI now enforces Lighthouse budgets (Perf ≥ 90,
+  A11y ≥ 95, Best-Practices ≥ 95) on the four key pages and axe-core checks on
+  the join modal + start-a-chapter form; a Content-Security-Policy header in
+  `vercel.json` (authored after the share/calendar/map surfaces exist, so it
+  allowlists them); the 198KB homepage event list is split into a Supabase-fed
+  lazy render. A checked-in RLS-coverage test asserts every table has explicit
+  policies with no anon write leak, plus hot-FK indexes (migration 0009).
+- **Observability + privacy + runbook.** A dependency-free, CSP-safe client
+  error-reporting hook installed globally in `js/config.js` (Sentry-ready via
+  `SENTRY_DSN`/`ERROR_SINK_URL`; fire a test error with `?__test_error=1`); a
+  `/privacy` page with a data-retention policy and deletion path; a one-page
+  `docs/operator-runbook.md`; an updated `docs/data-model.md` ERD; a documented
+  backup+restore drill (RTO/RPO); SRI re-pinning of CDN deps; and a final anon
+  re-probe (`scripts/rls-probe.sh`) confirming no PII is reachable.
+
 ## 1.5.0 — Recaps + Evergreen SEO
 
 - recap columns on events (recap_url + recap_photos_url jsonb path array +

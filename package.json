@@ -1,12 +1,19 @@
 {
   "name": "clawcamp-tests",
-  "version": "0.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Self-contained, locally-run Playwright regression tests for claw.camp. NOT wired into CI (v1.1.0 ci.yml is deliberately curl-only).",
+  "description": "ClawCamp's quality wall. Playwright (xss + a11y + rls-coverage) and Lighthouse budgets now RUN IN CI (.github/workflows/ci.yml) as the v2.0.0 exit criterion — the v1.x 'NOT wired into CI / curl-only' deferral is over. Run locally with: npm install && npx playwright install chromium && npm run test:e2e",
   "scripts": {
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:a11y": "playwright test tests/a11y.spec.js",
+    "test:rls": "playwright test tests/rls-coverage.spec.js",
+    "serve": "serve -l 8080 .",
+    "lhci": "lhci autorun"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.0"
+    "@axe-core/playwright": "^4.10.1",
+    "@lhci/cli": "^0.14.0",
+    "@playwright/test": "^1.49.0",
+    "serve": "^14.2.4"
   }
 }

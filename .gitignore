@@ -3,3 +3,12 @@ sendgrid.env
 .gstack/
 .claude/worktrees/
 .claude/scheduled_tasks.lock
+
+# Quality-wall test harness artifacts (v2.0.0): deps + Playwright/Lighthouse
+# outputs are generated in CI and locally; the committed inputs are
+# package.json + package-lock.json + the specs + the inline lighthouserc.
+node_modules/
+playwright-report/
+test-results/
+.lighthouseci/
+lighthouserc.json

@@ -1,27 +1,40 @@
 # ===========================================================================
-# ClawCamp CI gate — v1.1.0 (chapters-are-real)
+# ClawCamp CI — the QUALITY WALL (v2.0.0, self-running-platform)
 # ===========================================================================
-# WHAT: the first repo CI gate. Runs the curl-based security + smoke probes on
-#   every PR and on every push to master, BEFORE Vercel promotes the build.
+# WHAT: every PR and every push to master must clear three gates BEFORE Vercel
+#   promotes the build. v2.0.0 REVERSES the v1.x deferral: where the old header
+#   said "Playwright / Lighthouse / axe are explicitly deferred — do NOT add
+#   them here," enforcing them IS now the exit criterion. The full wall:
 #
-# THE BLOCKING CHECK: scripts/rls-probe.sh is the required gate. It exits 1 if
-#   the anon key can read contacts, PATCH contacts by email, OR (new in v1.1.0)
-#   write the chapters table. Any of those non-zero exits fails this job and the
-#   whole check, so a regressed RLS lockdown can never silently ship.
-#   scripts/smoke.sh runs after it as an HTTP/200 + content sanity pass on the
-#   live site (including the new per-chapter route).
+#   1) gate        — the original curl-based security + smoke probes (UNCHANGED,
+#                    still BLOCKING). scripts/rls-probe.sh is the live anon-leak
+#                    gate (exits 1 if anon can read/write a locked table);
+#                    scripts/smoke.sh is the HTTP-200 + content sanity pass.
+#   2) playwright  — npm ci + Chromium, then the checked-in specs, ALL BLOCKING:
+#                      * tests/xss.spec.js          — stored-XSS renders inert
+#                      * tests/a11y.spec.js         — axe-core clean (no
+#                        serious/critical) + keyboard-operable Join modal &
+#                        Start-a-Chapter form
+#                      * tests/rls-coverage.spec.js — STATIC source audit that
+#                        every table is locked (no anon write policy/grant). This
+#                        one is a pure file parse — no network, no server.
+#                    The live-site specs (xss, a11y) run against a local
+#                    `npx serve` of the static repo, whose clean-URL routing
+#                    mirrors Vercel's cleanUrls (so /chapters, /events/detail
+#                    resolve exactly as in prod).
+#   3) lighthouse  — @lhci/cli budgets on /, /events, /chapters, /events/detail.
+#                    FAILS the build below Performance>=90, Accessibility>=95,
+#                    Best-Practices>=95. Also served by the same local `npx serve`.
 #
-# NO SECRETS REQUIRED: both scripts default SUPABASE_URL / SUPABASE_ANON_KEY to
-#   the PUBLIC prod values inline (the anon key ships in the browser bundle by
-#   design). They may still be overridden via env if ever needed.
+# NO SECRETS REQUIRED: the security/smoke scripts default SUPABASE_URL /
+#   SUPABASE_ANON_KEY to the PUBLIC prod values inline (the anon key ships in the
+#   browser bundle by design). The Playwright/Lighthouse jobs hit a LOCAL static
+#   server, so they need no deploy + no secrets either.
 #
-# SCOPE: deliberately curl-only (rls-probe + smoke). Playwright / Lighthouse /
-#   axe are explicitly deferred per the council notes — do NOT add them here.
-#
-# DEPLOY PROTECTION (manual, NOT in-repo): for this gate to actually block a
-#   promotion, Vercel deploy protection must be configured to REQUIRE this
-#   GitHub check before promoting master. That toggle lives in the Vercel
-#   dashboard (Project -> Settings -> Git / Deployment Protection), not here.
+# DEPLOY PROTECTION (manual, NOT in-repo): for these gates to actually block a
+#   promotion, Vercel deploy protection must REQUIRE these GitHub checks before
+#   promoting master. That toggle lives in the Vercel dashboard
+#   (Project -> Settings -> Git / Deployment Protection), not here.
 # ===========================================================================
 
 name: ci
@@ -34,6 +47,9 @@ name: ci
     branches: [master]
 
 jobs:
+  # -------------------------------------------------------------------------
+  # GATE 1 (unchanged, blocking): curl-based RLS leak probe + smoke test.
+  # -------------------------------------------------------------------------
   gate:
     name: rls-probe + smoke
     runs-on: ubuntu-latest
@@ -50,3 +66,119 @@ jobs:
 
       - name: Smoke test
         run: bash scripts/smoke.sh
+
+  # -------------------------------------------------------------------------
+  # GATE 2 (blocking): Playwright — xss + a11y + rls-coverage specs.
+  # -------------------------------------------------------------------------
+  playwright:
+    name: playwright (xss + a11y + rls-coverage)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium (+ system deps)
+        run: npx playwright install --with-deps chromium
+
+      # The static-source RLS coverage audit needs no server (pure file parse) —
+      # run it first so a lockdown regression fails fast and cheap.
+      - name: RLS coverage audit (static, blocking)
+        run: npx playwright test tests/rls-coverage.spec.js
+
+      # Serve the static repo with clean-URL routing that mirrors Vercel's
+      # cleanUrls (so /chapters and /events/detail resolve to their index.html
+      # exactly as in prod), then point the live-site specs at it.
+      - name: Start static server
+        run: |
+          npx serve -l 8080 . > /tmp/serve.log 2>&1 &
+          # Poll until the server answers (no extra dep): up to ~60s.
+          for i in $(seq 1 60); do
+            if curl -fsS -o /dev/null http://localhost:8080/; then
+              echo "static server is up"; exit 0
+            fi
+            sleep 1
+          done
+          echo "static server did not come up in time"; cat /tmp/serve.log; exit 1
+
+      - name: XSS + a11y specs (blocking)
+        env:
+          BASE_URL: http://localhost:8080
+        run: npx playwright test tests/xss.spec.js tests/a11y.spec.js
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  # -------------------------------------------------------------------------
+  # GATE 3 (blocking): Lighthouse CI budgets on the four key pages.
+  #   Performance>=90, Accessibility>=95, Best-Practices>=95 — below budget
+  #   fails the build. Config is authored inline (this slice owns CI, not a
+  #   separate lighthouserc file) and runs against the same local static serve.
+  # -------------------------------------------------------------------------
+  lighthouse:
+    name: lighthouse budgets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Write the LHCI config inline. `staticDistDir` lets lhci boot its own
+      # static server with clean-URL resolution; assertions enforce the budgets
+      # and FAIL the run (assertions.assertMatrix -> error) when a category is
+      # below threshold. numberOfRuns: 3 medians out single-run jitter so the
+      # gate is stable, not flaky.
+      - name: Write Lighthouse CI config
+        run: |
+          cat > lighthouserc.json <<'JSON'
+          {
+            "ci": {
+              "collect": {
+                "staticDistDir": ".",
+                "numberOfRuns": 3,
+                "url": [
+                  "http://localhost/index.html",
+                  "http://localhost/events/index.html",
+                  "http://localhost/chapters/index.html",
+                  "http://localhost/events/detail/index.html?id=173"
+                ],
+                "settings": {
+                  "preset": "desktop",
+                  "skipAudits": ["uses-http2", "canonical", "is-on-https", "redirects-http"]
+                }
+              },
+              "assert": {
+                "assertions": {
+                  "categories:performance": ["error", { "minScore": 0.9 }],
+                  "categories:accessibility": ["error", { "minScore": 0.95 }],
+                  "categories:best-practices": ["error", { "minScore": 0.95 }]
+                }
+              },
+              "upload": { "target": "temporary-public-storage" }
+            }
+          }
+          JSON
+
+      - name: Run Lighthouse CI (blocking below budget)
+        run: npx lhci autorun

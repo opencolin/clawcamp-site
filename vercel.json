@@ -16,5 +16,20 @@
     { "source": "/FINAL-PRD", "destination": "/", "permanent": false },
     { "source": "/HackMeBaby-PRD.md", "destination": "/", "permanent": false },
     { "source": "/HackMeBaby-PRD", "destination": "/", "permanent": false }
+  ],
+  "//csp": "Content-Security-Policy authored LAST in v2.0.0 — AFTER the share / .ics-calendar / Leaflet-map surfaces shipped (v1.5) — so it ALLOWLISTS the real surfaces rather than killing them. THE SECURITY-MEANINGFUL DIRECTIVES ARE TIGHT: script-src / style-src / connect-src / object-src / frame-ancestors / form-action are explicit allowlists (those are the code-execution + data-exfiltration vectors). Each maps to a thing the live site actually does: script/style unpkg.com = Leaflet (js + css), cdn.jsdelivr.net = supabase-js + Geist fonts; 'unsafe-inline' (script + style) = the no-build site's ~89 inline onclick handlers and inline <style>/style= (NO 'unsafe-eval' — no served page uses eval/Function/text-babel); connect-src *.supabase.co = REST + Edge Functions, nominatim.openstreetmap.org = the city geocode. img-src is DELIBERATELY permissive ('self' data: blob: https:) because event cover images are DB-driven (admins set image_url to ANY host — Luma, Squarespace, aicamp.ai, …) and the Leaflet tile hosts redirect (map1.vis.earthdata.nasa.gov -> gitc.earthdata.nasa.gov), so an exhaustive host list would be fragile and would silently break covers/tiles; images cannot execute code, so a broad img allowlist carries little risk while the strict script/connect directives still block XSS + exfiltration. data:/blob: in img-src + no navigate-to/restrictive override keep the Apple/.ics download (Blob + data:text/calendar) working; navigator.share needs no directive. frame-ancestors 'none' is clickjacking protection (the site is not meant to be embedded) and does not affect the map/share/ics. Re-verify with a CSP-header load of /, /events, /chapters, /events/detail whenever a NEW script/style/connect surface ships.",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://nominatim.openstreetmap.org; worker-src 'self' blob:; manifest-src 'self'"
+        },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "X-Frame-Options", "value": "DENY" }
+      ]
+    }
   ]
 }

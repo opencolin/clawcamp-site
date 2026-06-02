@@ -307,3 +307,78 @@ powering the dashboard "My Chapters" list and the unfollow control.
 > table with a real per-chapter uniqueness constraint and an Edge-Function-only
 > write path. (The broader multi-`form_type` overloading of `contacts` remains
 > open for the other producers — see that debt item above.)
+
+## v2.0 additions — self-serve provisioning, opt-in directory, hot-FK indexes (June 2026)
+
+Release 2.0.0 ("self-running-platform") turns ClawCamp into a real self-serve
+multi-chapter network. The DB-side additions land in
+`supabase/migrations/0009_indexes_and_provisioning.sql` (applied by an admin;
+anon cannot run DDL). Nothing below changes the anon RLS posture — the
+[`SECURITY.md`](../SECURITY.md) contract still holds, and `scripts/rls-probe.sh`
+re-asserts it (no PII reachable anywhere).
+
+### `chapters.status = 'forming'` — self-serve provisioning path
+
+Until v2.0 a new chapter required hand-editing the `chapters` table and manually
+inserting a `memberships` captain row. v2.0 makes provisioning self-serve:
+
+- The existing **"Start a Chapter"** application (`chapters/index.html`
+  `submitChapterApp`, `form_type='chapter_application'`) is, on approval, turned
+  into a **live chapter** by the **`provision-chapter` Edge Function** (a
+  service-role function alongside the existing `supabase/functions/*` — anon
+  never writes `chapters`/`memberships` directly).
+- The function **creates a `chapters` row with `status = 'forming'`** and
+  **grants the applicant the `captain` membership** (`role='captain'` scoped to
+  the new chapter), in one trusted server-side step.
+- `chapters.status` is **text + a `CHECK` constraint** (the 0002/0004
+  convention — *not* a Postgres enum), with values such as
+  `'forming'` → `'active'`. A `'forming'` chapter renders the public
+  "this city is forming" state and graduates to `'active'` once it has approved
+  events. Pre-existing chapters are unaffected (the column is added
+  `IF NOT EXISTS` and backfilled to `'active'`).
+- This is the **direct replacement** for the manual DB-editing step the
+  operator runbook used to require — see [`operator-runbook.md`](operator-runbook.md) §3.
+
+### Opt-in member directory column (engagement slice)
+
+The opt-in per-chapter member directory (profiles shown on a chapter page as
+photo/`@username`/bio, *only* with consent) relies on a **boolean opt-in column
+on `profiles`** — `directory_opt_in boolean NOT NULL DEFAULT false`. Default
+**false** means a profile is **never** listed without the user explicitly opting
+in from the dashboard; clearing it removes them from the directory. The
+directory read is gated so only opted-in, non-PII profile fields
+(`username`, `bio`, photo) are exposed — emails are never part of the directory
+payload. This keeps the [`/privacy`](../privacy/index.html) "directory is
+opt-in" promise enforceable in data, not just UI.
+
+### `0009` hot-FK indexes (query budget)
+
+Migration 0009 adds B-tree indexes on the **hot foreign keys** that the
+DB-first read paths (now that static fallbacks are retired) traverse on every
+list/detail/map render. These back the v2.0 query budget:
+
+| Index on | Backs |
+|----------|-------|
+| `events(chapter_id)` | events filtered/grouped by chapter (lists, chapter pages, map) |
+| `event_speakers(event_id)` | speaker block on the detail page |
+| `event_schedule(event_id)` | schedule block on the detail page (note: the table is named `event_schedule`, per migration 0003 — not "schedule_blocks") |
+| `event_sponsors(event_id)` | sponsor block on the detail page + `sponsors/index.html` |
+| `rsvps(event_id)` | roster reads + the `rsvp_count` RPC |
+| `chapter_follows(chapter_id)` | follower counts + the follow feed |
+
+All are created `IF NOT EXISTS` and are additive (no lock-heavy table rewrite).
+The `memberships(chapter_id)` / `memberships(profile_id)` and
+`chapter_follows(chapter_id)` / `chapter_follows(profile_id)` indexes already
+shipped in 0006/0007 (see those sections); 0009 fills the remaining gaps above.
+
+### Checked-in generated types + ERD
+
+`supabase gen types typescript` should be **regenerated and checked in** after
+0009 applies, at the intended path **`supabase/database.types.ts`**, so the
+schema-of-record travels with the repo and a follow-up can drop the file
+verbatim. (This document remains the human-readable ERD; the generated file is
+the machine-readable companion.) A checked-in RLS-coverage test
+(`tests/rls-coverage.spec.js`) asserts every table — `events`, `chapters`,
+`event_speakers`, `event_schedule`, `event_sponsors`, `profiles`,
+`memberships`, `rsvps`, `chapter_follows`, `contacts` — has explicit
+SELECT/INSERT/UPDATE/DELETE policies with no anon write leak.

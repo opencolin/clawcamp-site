@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy & Data — ClawCamp</title>
+<meta name="description" content="What data ClawCamp collects, why, how it is protected, how long it is kept, and how to request its deletion.">
+<link rel="canonical" href="https://claw.camp/privacy">
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bricolage+Grotesque:wght@300;400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/shared.css">
+<style>
+  .privacy-body {
+    padding: 48px 48px 0;
+    max-width: 760px;
+  }
+  .privacy-body p {
+    font-size: 16px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-bottom: 16px;
+  }
+  .privacy-body h2 {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 40px 0 12px;
+  }
+  .privacy-body h2 em { font-style: normal; color: var(--rust); }
+  .privacy-body h3 {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 24px 0 6px;
+  }
+  .privacy-body a { color: var(--rust); }
+  .privacy-body ul {
+    margin: 0 0 16px 0;
+    padding-left: 20px;
+  }
+  .privacy-body li {
+    font-size: 15px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-bottom: 8px;
+  }
+  .privacy-body table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 24px 0;
+    font-size: 14px;
+  }
+  .privacy-body th,
+  .privacy-body td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--cream);
+    vertical-align: top;
+    color: var(--muted);
+  }
+  .privacy-body th {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink);
+  }
+  .privacy-body td code {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--ink);
+  }
+  .privacy-note {
+    margin: 32px 0;
+    padding: 20px 24px;
+    border-left: 3px solid var(--rust);
+    background: var(--cream);
+    border-radius: 0 8px 8px 0;
+  }
+  .privacy-note p { margin-bottom: 0; font-size: 15px; }
+  .privacy-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 48px;
+    padding-bottom: 48px;
+  }
+</style>
+</head>
+<body>
+
+<div id="site-nav"></div>
+
+<header class="page-header">
+  <h1>Privacy &amp;<br><em>Data</em></h1>
+  <div class="header-meta">
+    <p>What we collect</p>
+    <p>How long we keep it</p>
+  </div>
+</header>
+
+<div class="privacy-body">
+  <p>ClawCamp is a community network. We collect the minimum we need to run
+  events, let people RSVP and follow chapters, and send the emails people
+  asked for. We do not sell data, and we do not run third-party advertising
+  trackers. This page explains exactly what we store, why, how it is
+  protected, how long we keep it, and how to have it deleted.</p>
+
+  <h2>What we <em>collect</em></h2>
+  <p>Everything below is provided by you, on a form you chose to submit. We do
+  not buy contact lists or scrape profiles.</p>
+
+  <table>
+    <thead>
+      <tr><th>Data</th><th>Where it comes from</th><th>Why we keep it</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Email, name, city, and the fields of the specific form (e.g. company, role, topic)</td>
+        <td>RSVP forms, event/host/speaker/sponsor applications, the newsletter signup (stored in our <code>contacts</code> records)</td>
+        <td>To follow up on your request, confirm an RSVP, review an application, and send the emails you opted into</td>
+      </tr>
+      <tr>
+        <td>Public profile: <code>username</code>, bio, and photo</td>
+        <td>The dashboard, if you create an account and fill them in (<code>profiles</code>)</td>
+        <td>To show you on a chapter member directory — but only if you opt in (see below)</td>
+      </tr>
+      <tr>
+        <td>Chapter follows</td>
+        <td>The "follow this chapter" control (<code>chapter_follows</code>)</td>
+        <td>To notify you when a chapter you follow posts a new event</td>
+      </tr>
+      <tr>
+        <td>RSVPs</td>
+        <td>The RSVP form on an event page (<code>rsvps</code>)</td>
+        <td>To give the event organizer a headcount and roster, and to send you a reminder and recap</td>
+      </tr>
+      <tr>
+        <td>Light attribution (UTM / referrer)</td>
+        <td>The link you arrived from, stamped on a new contact record</td>
+        <td>To understand which channels bring people to events — never linked to advertising profiles</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>We do <strong>not</strong> store payment information (events are free or
+  handled by an external ticketing provider), and the error-monitoring on this
+  site reports only technical error metadata (a stack trace, the page path, and
+  the browser version) — never your cookies, your login, your email, or
+  anything you typed into a form.</p>
+
+  <h2>How your data is <em>protected</em></h2>
+  <p>ClawCamp is a static site backed by a single Supabase Postgres database.
+  The public key shipped in our pages is an anonymous, row-level-security-gated
+  key — it can only do what our database policies explicitly allow. Sensitive
+  tables (the RSVP roster, your contact record, member roles) are
+  <strong>not readable</strong> by that public key at all; only a signed-in
+  user can read their own data, and only an event's own captain can read that
+  event's roster. The trusted, server-side key that can bypass these policies
+  never ships to your browser. The full posture is documented in our
+  <a href="/SECURITY.md">security policy</a>.</p>
+
+  <h2>How long we <em>keep it</em> (data retention)</h2>
+  <p>Our retention policy for the <code>contacts</code> records and related
+  community data:</p>
+  <ul>
+    <li><strong>Active community data</strong> — your contact record, profile,
+    follows, and RSVPs are kept while you are an active part of the community,
+    so we can keep running events for you.</li>
+    <li><strong>Inactivity</strong> — if you have not opened a ClawCamp email,
+    RSVPed, or signed in for <strong>24 months</strong>, we delete or anonymize
+    your contact record in our next routine cleanup.</li>
+    <li><strong>RSVP rosters</strong> — kept for up to <strong>12 months</strong>
+    after an event (to send the recap and measure attendance), then the
+    personal columns are cleared, leaving only an anonymous attendance count.</li>
+    <li><strong>Newsletter</strong> — kept until you unsubscribe; an unsubscribe
+    removes you promptly.</li>
+  </ul>
+
+  <h2>Your choices &amp; <em>opt-outs</em></h2>
+  <ul>
+    <li><strong>Email preferences.</strong> Signed-in users can turn each email
+    stream (events, newsletter, recaps) on or off from the email-preferences
+    section of the <a href="/dashboard">dashboard</a>. Every email we send also
+    carries an unsubscribe link that opts you out without signing in.</li>
+    <li><strong>Member directory is opt-in.</strong> Your profile only appears
+    on a chapter's public member directory if you explicitly opt in from the
+    dashboard. It is off by default; turning it off removes you from the
+    directory.</li>
+    <li><strong>Notifications.</strong> Chapter-follow and RSVP-reminder emails
+    are governed by the same dashboard preferences, so you control how much
+    we send.</li>
+  </ul>
+
+  <h2>Requesting <em>access or deletion</em></h2>
+  <div class="privacy-note">
+    <p>To see what we hold about you, correct it, or have it deleted, email
+    <a href="mailto:hello@claw.camp?subject=Data%20request">hello@claw.camp</a>
+    with the subject "Data request". Tell us the email address you used so we
+    can find your records. We will confirm and complete deletion within
+    <strong>30 days</strong>. Signed-in users can also self-serve the most
+    common changes — editing or clearing a profile, unfollowing a chapter, and
+    toggling every email stream off — directly from the
+    <a href="/dashboard">dashboard</a>.</p>
+  </div>
+
+  <h2>Questions</h2>
+  <p>Privacy or data questions go to
+  <a href="mailto:hello@claw.camp">hello@claw.camp</a>. Security issues should
+  follow the responsible-disclosure process in our
+  <a href="/SECURITY.md">security policy</a>.</p>
+
+  <p class="privacy-meta">Last updated: June 2026 (v2.0.0).</p>
+</div>
+
+<div id="site-footer"></div>
+<script src="/js/config.js"></script>
+<script src="/js/nav.js"></script>
+</body>
+</html>

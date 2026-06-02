@@ -207,7 +207,13 @@
     color: var(--muted);
   }
 
-  /* Email preferences */
+  /* Notification preferences */
+  .pref-intro {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
   .pref-list {
     display: flex;
     flex-direction: column;
@@ -741,13 +747,29 @@
     </div>
   </div>
 
+  <!-- ===================================================================
+       NOTIFICATION PREFERENCES — the deliverability-protecting opt-out surface.
+       This is the page the notify-engagement Edge Function links to in EVERY
+       email it sends (its unsubscribe / preferences link points at /dashboard).
+       The "Event & RSVP notifications" toggle below maps to contacts.sub_events,
+       the SINGLE flag that function gates on: with it OFF, the function skips
+       this address entirely for BOTH followed-chapter new-event emails AND RSVP
+       reminders (the two categories its copy lists). The IDs (pref-events /
+       pref-newsletter / pref-sponsors) and savePref()/loadPrefs() wiring are
+       unchanged, so the same session-bound upsert to contacts via dashAuthFetch
+       (anon SELECT/UPDATE on contacts is revoked — a token is required) keeps
+       working; only the labels/copy are clarified into per-category meaning.
+       =================================================================== -->
   <div class="dash-section">
-    <div class="dash-section-title">Email Preferences</div>
+    <div class="dash-section-title">Notification preferences</div>
+    <p class="pref-intro">Choose which emails ClawCamp sends you. Turn any
+      category off and we&rsquo;ll stop &mdash; you can change this any time.</p>
     <div class="pref-list" id="pref-list">
       <div class="pref-item">
         <div class="pref-info">
-          <h3>Event Announcements</h3>
-          <p>New camps, schedule updates, and RSVP reminders</p>
+          <h3>Event &amp; RSVP notifications</h3>
+          <p>New events from chapters you follow, and reminders for events you&rsquo;ve
+            RSVP&rsquo;d to. Turn this off to stop both.</p>
         </div>
         <label class="pref-toggle">
           <input type="checkbox" id="pref-events" checked onchange="savePref()">
@@ -757,7 +779,7 @@
       <div class="pref-item">
         <div class="pref-info">
           <h3>Newsletter</h3>
-          <p>Weekly digest of community highlights, new guides, and recaps</p>
+          <p>Weekly digest of community highlights, new guides, and event recaps.</p>
         </div>
         <label class="pref-toggle">
           <input type="checkbox" id="pref-newsletter" checked onchange="savePref()">
@@ -766,8 +788,8 @@
       </div>
       <div class="pref-item">
         <div class="pref-info">
-          <h3>Sponsor Offers</h3>
-          <p>Credits, discounts, and perks from ClawCamp sponsors</p>
+          <h3>Sponsor offers</h3>
+          <p>Credits, discounts, and perks from ClawCamp sponsors.</p>
         </div>
         <label class="pref-toggle">
           <input type="checkbox" id="pref-sponsors" checked onchange="savePref()">
