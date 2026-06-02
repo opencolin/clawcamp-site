@@ -586,8 +586,9 @@ function buildChapterCard(ch, stat) {
   // lowercased name + city so typing either matches.
   card.dataset.name = (name + ' ' + (ch.city || '')).toLowerCase().trim();
   if (ch.slug) card.id = 'chapter-' + ch.slug;
-  // Clicking the card opens the join modal exactly as before.
-  card.addEventListener('click', function() { openJoin(name, location, emoji); });
+  // Clicking the card opens the join modal exactly as before. Pass ch.id (+slug)
+  // so the modal can submit a REAL chapter_follow row (see submitJoin).
+  card.addEventListener('click', function() { openJoin(name, location, emoji, ch.id, ch.slug); });
 
   // Cover with the row's gradient + emoji
   var cover = document.createElement('div');
@@ -718,7 +719,7 @@ function renderDetail(chapters, slug) {
   var joinBtn = document.createElement('button');
   joinBtn.className = 'btn-rust';
   joinBtn.textContent = '+ Follow this chapter';
-  joinBtn.addEventListener('click', function() { openJoin(name, location, emoji); });
+  joinBtn.addEventListener('click', function() { openJoin(name, location, emoji, match.id, match.slug); });
   actions.appendChild(joinBtn);
 
   document.getElementById('chapter-detail').classList.add('visible');
@@ -913,11 +914,18 @@ function submitChapterApp() {
 }
 
 // ===========================================================================
-// JOIN CHAPTER MODAL (unchanged — writes a chapter_follow contact)
+// JOIN CHAPTER MODAL (writes a REAL public.chapter_follows row via the
+// submit-follow Edge Function — replaces the v1.2 'chapter_follow contact' hack)
 // ===========================================================================
-var _joinChapter = '';
-function openJoin(chapterName, loc, emoji) {
+// A follow is anonymous-email-first: email is enough, no login required. When a
+// session exists we forward the user's id as profile_id (best-effort linkage).
+// The Edge Function holds the service-role key (the only writer since 0007
+// revokes anon write); the browser only carries the public anon key.
+var _joinChapter = '';     // chapter NAME (display only)
+var _joinChapterId = null; // chapter_id — what the real follow needs
+function openJoin(chapterName, loc, emoji, chapterId, slug) {
   _joinChapter = chapterName;
+  _joinChapterId = (chapterId === 0 || chapterId) ? chapterId : null;
   document.getElementById('join-chapter-name').textContent = chapterName;
   document.getElementById('join-chapter-loc').textContent = (emoji || '📍') + ' ' + loc;
   document.getElementById('join-email').value = '';
@@ -948,38 +956,54 @@ function submitJoin() {
   }
   status.textContent = 'Joining...';
   status.style.color = '';
-  fetch(SUPABASE_URL + '/rest/v1/contacts', {
-    method: 'POST',
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY,
-      'Content-Type': 'application/json',
-      'Prefer': 'resolution=merge-duplicates,return=minimal'
-    },
-    body: JSON.stringify({
-      email: email,
-      name: name || undefined,
-      city: _joinChapter,
-      form_type: 'chapter_follow',
-      sub_events: true,
-      sub_newsletter: true,
-      email_opt_in: true
-    })
-  }).then(function(r) {
-    if (r.ok || r.status === 201) {
-      status.textContent = 'You\'ve joined! ✓';
-      status.style.color = '#2d4a2f';
-      setTimeout(function() {
-        document.getElementById('join-modal-overlay').classList.remove('open');
-      }, 1500);
-    } else {
+
+  var payload = {
+    email: email,
+    name: name || undefined,
+    chapter_id: _joinChapterId,
+    website: '' // honeypot — always empty; server silently drops if non-empty
+  };
+
+  function postFollow() {
+    // Same POST/parse shape submit-rsvp uses (res.json().then().catch()). The
+    // anon key authorizes the call; the function holds the service-role key.
+    fetch(SUPABASE_URL + '/functions/v1/submit-follow', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function(res) {
+      return res.json().then(function(data){ return { ok: res.ok, data: data }; })
+        .catch(function(){ return { ok: res.ok, data: null }; });
+    }).then(function(result) {
+      // r.ok covers both a fresh follow and the friendly { already:true } 200.
+      if (result.ok) {
+        status.textContent = 'You\'ve joined! ✓';
+        status.style.color = '#2d4a2f';
+        setTimeout(function() {
+          document.getElementById('join-modal-overlay').classList.remove('open');
+        }, 1500);
+      } else {
+        status.textContent = 'Error. Try again.';
+        status.style.color = '#c62828';
+      }
+    }).catch(function(){
+      // Network error / Edge Function not deployed yet — graceful, no crash.
       status.textContent = 'Error. Try again.';
       status.style.color = '#c62828';
-    }
-  }).catch(function(){
-    status.textContent = 'Error. Try again.';
-    status.style.color = '#c62828';
-  });
+    });
+  }
+
+  // Optional account linkage (best-effort; never required). If a session
+  // exists, attach the user's id as profile_id, then submit either way.
+  if (window.clawAuth) {
+    clawAuth.getSession().then(function(r){
+      if (r && r.data && r.data.session && r.data.session.user) {
+        payload.profile_id = r.data.session.user.id;
+      }
+    }).catch(function(){}).then(postFollow);
+  } else {
+    postFollow();
+  }
 }
 </script>
 </body>

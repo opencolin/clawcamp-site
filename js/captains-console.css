@@ -1,0 +1,363 @@
+/* === ClawCamp — Captain's Console (v1.4 RBAC) ===
+ *
+ * Styling for the dashboard-mounted Captain's Console (js/captains-console.js).
+ * Consistent with the existing dashboard / shared.css visual language:
+ *   - the .dash-section / .quick-link / .adm-card patterns
+ *   - the shared CSS variables (--rust/--sand/--ink/--muted/--moss/--cream)
+ *   - the approve=green / reject=red button treatment from admin/index.html
+ *
+ * ALL selectors are scoped under the .cc-console root class so nothing leaks
+ * into the rest of the dashboard. The module sets root.className = 'cc-console'
+ * only when it actually renders, so an empty/absent console contributes no CSS
+ * footprint either.
+ */
+
+.cc-console {
+  padding: 40px 48px 0;
+  max-width: 900px;
+}
+
+.cc-intro {
+  margin-bottom: 24px;
+}
+.cc-intro-title {
+  font-size: clamp(22px, 4vw, 30px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 6px;
+}
+.cc-intro-sub {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ---- One captained chapter ---- */
+.cc-console .cc-chapter {
+  border: 1px solid var(--sand);
+  border-radius: 12px;
+  background: white;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.cc-console .cc-chapter-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 2px;
+}
+.cc-console .cc-chapter-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.cc-console .cc-chapter-emoji { font-style: normal; }
+.cc-console .cc-role-tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: var(--rust);
+  color: white;
+}
+.cc-console .cc-chapter-city {
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 18px;
+  overflow-wrap: anywhere;
+}
+
+/* ---- A titled block inside a chapter panel ---- */
+.cc-console .cc-block {
+  border-top: 1px solid var(--sand);
+  padding-top: 20px;
+  margin-top: 20px;
+}
+.cc-console .cc-block:first-of-type {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+.cc-console .cc-block-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+/* ---- Editable chapter form ---- */
+.cc-console .cc-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 560px;
+}
+.cc-console .cc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cc-console .cc-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.cc-console .cc-input {
+  padding: 11px 14px;
+  border: 1px solid var(--sand);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  background: white;
+  transition: border-color 0.15s;
+  outline: none;
+  width: 100%;
+}
+.cc-console .cc-input:focus { border-color: var(--rust); }
+.cc-console .cc-textarea { resize: vertical; min-height: 76px; }
+.cc-console .cc-save-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
+}
+.cc-console .cc-status {
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  color: var(--muted);
+  min-height: 16px;
+}
+
+/* ---- Buttons (shared treatment with admin/index.html) ---- */
+.cc-console .cc-btn {
+  border: none;
+  border-radius: 24px;
+  padding: 10px 22px;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-decoration: none;
+  display: inline-block;
+  line-height: 1.2;
+}
+.cc-console .cc-btn:disabled { opacity: 0.5; cursor: default; }
+.cc-console .cc-btn-primary { background: var(--rust); color: white; }
+.cc-console .cc-btn-primary:hover:not(:disabled) { background: #a0522d; }
+.cc-console .cc-btn-approve { background: #2d6a2f; color: white; }
+.cc-console .cc-btn-approve:hover:not(:disabled) { background: #245526; }
+.cc-console .cc-btn-reject {
+  background: white;
+  color: #c62828;
+  border: 1px solid #e0bcbc;
+}
+.cc-console .cc-btn-reject:hover:not(:disabled) { background: #fdf2f2; }
+.cc-console .cc-btn-ghost {
+  background: white;
+  color: var(--ink);
+  border: 1px solid var(--sand);
+}
+.cc-console .cc-btn-ghost:hover:not(:disabled) {
+  border-color: var(--ink);
+  background: var(--cream);
+}
+
+/* ---- Events list / grouping ---- */
+.cc-console .cc-event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.cc-console .cc-event-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cc-console .cc-group-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--ink);
+  font-weight: 500;
+}
+.cc-console .cc-group-count {
+  font-size: 11px;
+  background: var(--sand);
+  color: var(--ink);
+  border-radius: 20px;
+  padding: 1px 9px;
+}
+
+/* ---- Event moderation card (mirrors .adm-card) ---- */
+.cc-console .cc-event-card {
+  border: 1px solid var(--sand);
+  border-radius: 10px;
+  padding: 18px 20px;
+  background: var(--paper);
+}
+.cc-console .cc-event-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.cc-console .cc-event-name {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.cc-console .cc-event-badge {
+  flex-shrink: 0;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: var(--sand);
+  color: var(--ink);
+  white-space: nowrap;
+}
+.cc-console .cc-status-submitted { background: var(--gold-light); color: var(--gold); }
+.cc-console .cc-status-approved { background: var(--moss-light); color: var(--moss); }
+.cc-console .cc-status-rejected { background: #f7e4e4; color: #c62828; }
+.cc-console .cc-status-draft { background: var(--cream); color: var(--muted); }
+
+.cc-console .cc-event-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 12px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  margin-bottom: 10px;
+}
+.cc-console .cc-event-desc {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink);
+  margin-bottom: 10px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.cc-console .cc-event-link {
+  font-size: 12px;
+  font-family: 'DM Mono', monospace;
+  color: var(--rust);
+  word-break: break-all;
+  margin-bottom: 12px;
+}
+.cc-console .cc-event-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.cc-console .cc-event-actions .cc-btn {
+  padding: 8px 18px;
+  font-size: 13px;
+}
+
+/* ---- RSVP roster (collapsible) ---- */
+.cc-console .cc-roster-wrap {
+  margin-top: 14px;
+  border-top: 1px dashed var(--sand);
+  padding-top: 12px;
+}
+.cc-console .cc-roster-toggle {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--rust);
+  cursor: pointer;
+}
+.cc-console .cc-roster-toggle:hover { text-decoration: underline; }
+.cc-console .cc-roster-body { margin-top: 12px; }
+.cc-console .cc-roster-loading,
+.cc-console .cc-roster-empty {
+  font-size: 13px;
+  color: var(--muted);
+  padding: 6px 0;
+}
+
+/* Headcount / capacity badges */
+.cc-console .cc-headcount {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.cc-console .cc-badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+.cc-console .cc-badge-going { background: var(--moss-light); color: var(--moss); }
+.cc-console .cc-badge-waitlist { background: var(--gold-light); color: var(--gold); }
+.cc-console .cc-badge-over { background: #f7e4e4; color: #c62828; }
+.cc-console .cc-badge-note {
+  font-size: 11px;
+  color: #c62828;
+}
+
+.cc-console .cc-export-row { margin-bottom: 12px; }
+.cc-console .cc-export-row .cc-btn {
+  padding: 7px 16px;
+  font-size: 12px;
+}
+
+/* Roster table */
+.cc-console .cc-roster-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.cc-console .cc-roster-table th {
+  text-align: left;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 500;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--sand);
+}
+.cc-console .cc-roster-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--cream);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+.cc-console .cc-cell-email { font-family: 'DM Mono', monospace; word-break: break-all; }
+.cc-console .cc-cell-time { font-family: 'DM Mono', monospace; color: var(--muted); white-space: nowrap; }
+.cc-console .cc-row-cancelled td { color: var(--muted); text-decoration: line-through; }
+
+@media (max-width: 768px) {
+  .cc-console { padding-left: 20px; padding-right: 20px; }
+  .cc-console .cc-event-head { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .cc-console .cc-roster-table { font-size: 12px; }
+}
