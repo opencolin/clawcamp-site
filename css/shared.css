@@ -86,9 +86,15 @@ html[data-theme="dark"] .featured-event,
 html[data-theme="dark"] .sponsor-logo-card {
   background-color: #14130f;
 }
+html[data-theme="dark"] .hero,
 html[data-theme="dark"] .featured-left,
 html[data-theme="dark"] .section-dark,
 html[data-theme="dark"] .cta-band { color: #f5f2ec; }
+/* Hero headline/subtitle inherit the pinned light; keep rust <em> accents. */
+html[data-theme="dark"] .hero h1,
+html[data-theme="dark"] .hero .hero-sub,
+html[data-theme="dark"] .hero p { color: #f5f2ec; }
+html[data-theme="dark"] .hero h1 em { color: var(--rust); }
 
 /* ---- Nav ---- */
 nav {
