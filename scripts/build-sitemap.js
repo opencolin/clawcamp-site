@@ -19,6 +19,20 @@
  * failure we log a warning and still emit the static sitemap, so a flaky
  * network can never crash the commit-time build.
  *
+ * RECAP PAGES (v1.5 — "feed recap pages into the sitemap automatically ... for
+ * heavy internal linking / SEO authority flow"): a recap page is NOT a new URL —
+ * it IS the same /events/detail?id=<id> page once the event is past and carries
+ * recap content. So those URLs are already emitted (every approved event is). To
+ * give recaps the SEO weight the plan wants, we widen the events select to also
+ * read event_date + recap_url + recap_photos_url and RAISE the <priority> on a
+ * row that is past-dated AND has a recap (recap_url set OR a non-empty
+ * recap_photos_url array) to RECAP_PRIORITY; every other URL keeps the implicit
+ * default (no <priority> emitted, which a crawler treats as 0.5). The recap
+ * columns may not exist yet (added by a later migration); reading them is still
+ * best-effort — if PostgREST rejects the wider select (e.g. unknown column ->
+ * non-2xx) we fall back to the static sitemap exactly like any other fetch
+ * failure, so the commit-time build never crashes.
+ *
  * cleanUrls is enabled in vercel.json, so paths are emitted extensionless
  * (e.g. /events, /events/oakland) with no trailing slash.
  */
@@ -44,6 +58,11 @@ const SUPABASE_ANON_KEY =
 
 // Dynamic templates that should never be advertised in the sitemap.
 const EXCLUDED_EVENT_SLUGS = new Set(['detail']);
+
+// SEO weight for a past event that carries a living recap. Above the implicit
+// default (0.5) so recap pages get the internal-linking authority the plan asks
+// for; every other URL omits <priority> and inherits the crawler default.
+const RECAP_PRIORITY = '0.8';
 
 // Core public, crawlable pages (extensionless, cleanUrls on).
 const CORE_PATHS = [
@@ -79,13 +98,41 @@ function discoverEventPaths() {
 }
 
 /**
+ * True iff `row` is a past-dated event carrying recap content: a recap_url
+ * (any non-empty string) OR a non-empty recap_photos_url array. The recap
+ * columns are optional (a later migration adds them); an absent column reads as
+ * undefined here and simply yields false, so this degrades gracefully.
+ * event_date is the same `YYYY-MM-DD` string the detail page compares
+ * lexically against "today" (ev.event_date < todayStr), so we mirror that.
+ */
+function rowHasRecap(row, todayStr) {
+  if (!row || typeof row.event_date !== 'string' || row.event_date >= todayStr) {
+    return false;
+  }
+  const hasUrl =
+    typeof row.recap_url === 'string' && row.recap_url.trim() !== '';
+  const hasPhotos =
+    Array.isArray(row.recap_photos_url) && row.recap_photos_url.length > 0;
+  return hasUrl || hasPhotos;
+}
+
+/**
  * Fetch APPROVED dynamic events from Supabase and return their detail-page
- * paths, e.g. "/events/detail?id=173". Uses the public anon key and the
- * approved-only RLS-gated table; the explicit status=eq.approved filter is
- * defense-in-depth so a non-approved row can never be advertised even if RLS
- * were ever loosened. Best-effort: on any failure (no fetch, network error,
- * non-2xx, malformed body) we log a warning and return [] so the commit-time
- * build still emits the static sitemap rather than crashing.
+ * sitemap entries — objects of the shape { path, priority? } where path looks
+ * like "/events/detail?id=173". Uses the public anon key and the approved-only
+ * RLS-gated table; the explicit status=eq.approved filter is defense-in-depth
+ * so a non-approved row can never be advertised even if RLS were ever loosened.
+ *
+ * Recap weighting: the select is widened to event_date + recap_url +
+ * recap_photos_url so a past-dated row WITH a recap is emitted at
+ * RECAP_PRIORITY (heavier SEO authority for the living-recap pages); every
+ * other approved event is still emitted, just with no explicit priority. The
+ * recap columns may not exist yet — if PostgREST rejects the wider select it
+ * surfaces as a non-2xx and falls through the best-effort path below.
+ *
+ * Best-effort: on any failure (no fetch, network error, non-2xx, malformed
+ * body) we log a warning and return [] so the commit-time build still emits the
+ * static sitemap rather than crashing.
  */
 async function fetchApprovedEventPaths() {
   if (typeof fetch !== 'function') {
@@ -97,7 +144,7 @@ async function fetchApprovedEventPaths() {
 
   const url =
     SUPABASE_URL +
-    '/rest/v1/events?select=id,name,status&status=eq.approved';
+    '/rest/v1/events?select=id,name,status,event_date,recap_url,recap_photos_url&status=eq.approved';
 
   let rows;
   try {
@@ -132,12 +179,21 @@ async function fetchApprovedEventPaths() {
     return [];
   }
 
+  // event_date strings are compared lexically against today (same YYYY-MM-DD
+  // shape the detail page uses) to decide which approved rows are recap pages.
+  const todayStr = new Date().toISOString().slice(0, 10);
+
   // Never advertise a non-approved row, even if the API ever returned one.
   return rows
     .filter((row) => row && row.status === 'approved' && row.id != null)
-    .map((row) => row.id)
-    .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }))
-    .map((id) => '/events/detail?id=' + encodeURIComponent(id));
+    .sort((a, b) =>
+      String(a.id).localeCompare(String(b.id), undefined, { numeric: true })
+    )
+    .map((row) => {
+      const entry = { path: '/events/detail?id=' + encodeURIComponent(row.id) };
+      if (rowHasRecap(row, todayStr)) entry.priority = RECAP_PRIORITY;
+      return entry;
+    });
 }
 
 function xmlEscape(value) {
@@ -147,15 +203,26 @@ function xmlEscape(value) {
     .replace(/>/g, '&gt;');
 }
 
-function buildSitemap(paths) {
+/**
+ * Build the sitemap XML from an array of entries. An entry is either a bare
+ * path string ("/events") or an object { path, priority? }; a priority, when
+ * present, emits an optional <priority> element (recap pages use this for extra
+ * SEO weight). All other URLs omit <priority> and inherit the crawler default.
+ */
+function buildSitemap(entries) {
   const lastmod = new Date().toISOString().slice(0, 10);
-  const urls = paths
-    .map((p) => {
+  const urls = entries
+    .map((entry) => {
+      const p = typeof entry === 'string' ? entry : entry.path;
+      const priority = typeof entry === 'string' ? undefined : entry.priority;
       const loc = xmlEscape(BASE_URL + (p === '/' ? '' : p));
       return (
         '  <url>\n' +
         '    <loc>' + loc + '</loc>\n' +
         '    <lastmod>' + lastmod + '</lastmod>\n' +
+        (priority
+          ? '    <priority>' + xmlEscape(String(priority)) + '</priority>\n'
+          : '') +
         '  </url>'
       );
     })
@@ -170,14 +237,22 @@ function buildSitemap(paths) {
 }
 
 async function main() {
-  const dynamicPaths = await fetchApprovedEventPaths();
-  const paths = CORE_PATHS.concat(discoverEventPaths(), dynamicPaths);
-  const xml = buildSitemap(paths);
+  const dynamicEntries = await fetchApprovedEventPaths();
+  // CORE_PATHS + static event pages are bare strings; dynamic events are
+  // { path, priority? } entries so recap pages can carry a higher priority.
+  const entries = CORE_PATHS.concat(discoverEventPaths(), dynamicEntries);
+  const xml = buildSitemap(entries);
   fs.writeFileSync(OUTPUT, xml, 'utf8');
+  const recapCount = dynamicEntries.filter((e) => e && e.priority).length;
   console.log(
-    'Wrote ' + path.relative(REPO_ROOT, OUTPUT) + ' with ' + paths.length + ' URLs:'
+    'Wrote ' + path.relative(REPO_ROOT, OUTPUT) + ' with ' + entries.length +
+      ' URLs (' + recapCount + ' recap page(s) at priority ' + RECAP_PRIORITY + '):'
   );
-  paths.forEach((p) => console.log('  ' + p));
+  entries.forEach((e) => {
+    const p = typeof e === 'string' ? e : e.path;
+    const tag = typeof e === 'string' || !e.priority ? '' : '  [priority ' + e.priority + ']';
+    console.log('  ' + p + tag);
+  });
 }
 
 main().catch((err) => {

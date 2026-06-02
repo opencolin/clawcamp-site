@@ -336,9 +336,41 @@
   .chd-name { font-size: clamp(28px, 5vw, 42px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 12px; }
   .chd-location { font-size: 15px; color: var(--muted); display: flex; align-items: center; gap: 6px; margin-bottom: 20px; }
   .chd-blurb { font-size: 16px; line-height: 1.7; color: var(--ink); margin-bottom: 24px; }
+  /* Momentum stat — auto-computed "N events hosted · M total attendees" from chapter_stats. */
+  .chd-momentum {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 24px;
+  }
+  .chd-momentum .chd-momentum-item { display: inline-flex; align-items: baseline; gap: 5px; }
+  .chd-momentum .chd-momentum-item strong { font-size: 15px; font-weight: 600; color: var(--ink); }
   .chd-actions { display: flex; gap: 12px; flex-wrap: wrap; }
   .chd-events-section { padding: 40px 48px 80px; max-width: 900px; }
   .chd-section-title { font-family: 'DM Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--sand); }
+  /* Upcoming / Past tab bar above the events list. */
+  .chd-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--sand); margin-bottom: 8px; }
+  .chd-tab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    padding: 4px 8px 12px;
+    margin-bottom: -1px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .chd-tab:hover { color: var(--ink); }
+  .chd-tab.active { color: var(--rust); border-bottom-color: var(--rust); }
+  .chd-tab-panel { display: none; }
+  .chd-tab-panel.active { display: block; }
   .chd-events-empty { padding: 32px 0; color: var(--muted); font-size: 15px; }
   .chapter-notfound { text-align: center; padding: 80px 48px; display: none; }
   .chapter-notfound.visible { display: block; }
@@ -439,11 +471,17 @@
     <h1 class="chd-name" id="chd-name">Chapter</h1>
     <div class="chd-location" id="chd-location"></div>
     <p class="chd-blurb" id="chd-blurb"></p>
+    <div class="chd-momentum" id="chd-momentum"></div>
     <div class="chd-actions" id="chd-actions"></div>
   </div>
   <div class="chd-events-section">
-    <div class="chd-section-title">Upcoming Events</div>
-    <div id="chd-events"></div>
+    <div class="chd-tabs" id="chd-tabs"></div>
+    <div class="chd-tab-panel active" id="chd-panel-upcoming">
+      <div id="chd-events"></div>
+    </div>
+    <div class="chd-tab-panel" id="chd-panel-past">
+      <div id="chd-past-events"></div>
+    </div>
   </div>
 </div>
 
@@ -529,7 +567,10 @@ function loadChapterStats() {
 // Boot: branch on ?slug. Both branches reuse the single chapters fetch.
 if (_slug) {
   document.getElementById('chapters-index-view').style.display = 'none';
-  loadChapters().then(function(chapters) { renderDetail(chapters, _slug); });
+  // Load stats alongside chapters so the detail view can show the momentum line.
+  Promise.all([loadChapters(), loadChapterStats()]).then(function(res) {
+    renderDetail(res[0], _slug, res[1]);
+  });
 } else {
   Promise.all([loadChapters(), loadChapterStats()]).then(function(res) {
     renderGrid(res[0], res[1]);
@@ -681,7 +722,7 @@ function filterChapters(q) {
 // ===========================================================================
 // DETAIL VIEW (?slug=...)
 // ===========================================================================
-function renderDetail(chapters, slug) {
+function renderDetail(chapters, slug, stats) {
   var match = null;
   (chapters || []).forEach(function(ch) {
     if (ch.slug != null && String(ch.slug) === String(slug)) match = ch;
@@ -692,6 +733,17 @@ function renderDetail(chapters, slug) {
     document.title = 'Chapter not found — ClawCamp';
     return;
   }
+
+  // Find this chapter's stats row — index by slug (preferred) and id, exactly
+  // like renderGrid does, so we can join on whichever the view exposes.
+  var statsBySlug = {};
+  var statsById = {};
+  (stats || []).forEach(function(s) {
+    if (s.slug != null) statsBySlug[s.slug] = s;
+    if (s.id != null) statsById[s.id] = s;
+    if (s.chapter_id != null) statsById[s.chapter_id] = s;
+  });
+  var stat = statsBySlug[match.slug] || statsById[match.id] || {};
 
   var name = match.name || 'ClawCamp Chapter';
   var location = chapterLocation(match);
@@ -714,6 +766,14 @@ function renderDetail(chapters, slug) {
   var blurbEl = document.getElementById('chd-blurb');
   if (match.blurb) { blurbEl.textContent = match.blurb; } else { blurbEl.style.display = 'none'; }
 
+  // Momentum stat: auto-computed from chapter_stats (migration 0008 adds the
+  // events_hosted / total_attendees columns). numOr(...,0) keeps it at 0 when
+  // those columns are absent, so the line degrades gracefully rather than
+  // showing "undefined" before 0008 is applied.
+  var momentumEl = document.getElementById('chd-momentum');
+  momentumEl.appendChild(buildMomentumItem(numOr(stat.events_hosted, 0), 'events hosted'));
+  momentumEl.appendChild(buildMomentumItem(numOr(stat.total_attendees, 0), 'total attendees'));
+
   // Actions: follow/join this chapter (reuses the modal).
   var actions = document.getElementById('chd-actions');
   var joinBtn = document.createElement('button');
@@ -724,8 +784,56 @@ function renderDetail(chapters, slug) {
 
   document.getElementById('chapter-detail').classList.add('visible');
 
-  // Upcoming events for this chapter, joined via events.chapter_id.
+  // Build the Upcoming / Past tab bar. Default = Upcoming so first-load
+  // behaviour is unchanged.
+  buildEventTabs();
+
+  // Upcoming + Past events for this chapter, joined via events.chapter_id.
   loadChapterEvents(match.id);
+  loadChapterPastEvents(match.id);
+}
+
+// Build a single momentum stat item: a bold number + a muted label, all via
+// textContent (XSS-safe; no innerHTML).
+function buildMomentumItem(value, label) {
+  var item = document.createElement('span');
+  item.className = 'chd-momentum-item';
+  var strong = document.createElement('strong');
+  strong.textContent = value;
+  item.appendChild(strong);
+  item.appendChild(document.createTextNode(label));
+  return item;
+}
+
+// Build the Upcoming / Past tab bar with createElement and wire click handlers
+// that swap which tab panel is visible. Upcoming is active by default.
+function buildEventTabs() {
+  var tabs = document.getElementById('chd-tabs');
+  if (!tabs || tabs.childNodes.length) return; // build once
+  var panels = {
+    upcoming: document.getElementById('chd-panel-upcoming'),
+    past: document.getElementById('chd-panel-past')
+  };
+  var defs = [
+    { key: 'upcoming', label: 'Upcoming' },
+    { key: 'past', label: 'Past' }
+  ];
+  var buttons = {};
+  defs.forEach(function(def) {
+    var btn = document.createElement('button');
+    btn.className = 'chd-tab' + (def.key === 'upcoming' ? ' active' : '');
+    btn.type = 'button';
+    btn.textContent = def.label;
+    btn.addEventListener('click', function() {
+      defs.forEach(function(d) {
+        var on = d.key === def.key;
+        buttons[d.key].classList.toggle('active', on);
+        if (panels[d.key]) panels[d.key].classList.toggle('active', on);
+      });
+    });
+    buttons[def.key] = btn;
+    tabs.appendChild(btn);
+  });
 }
 
 function setMeta(name, ch) {
@@ -773,6 +881,50 @@ function loadChapterEvents(chapterId) {
       empty.textContent = 'Could not load events right now.';
       container.appendChild(empty);
     });
+}
+
+// Past events for the archive tab — mirrors loadChapterEvents but filters to
+// event_date < today and orders reverse-chronological (most recent first).
+function loadChapterPastEvents(chapterId) {
+  var container = document.getElementById('chd-past-events');
+  var url = SUPABASE_URL + '/rest/v1/events?chapter_id=eq.' + encodeURIComponent(chapterId) +
+    '&select=*&event_date=lt.' + todayStr() + '&order=event_date.desc';
+  fetch(url, { headers: SB_HEADERS })
+    .then(function(r) { return r.ok ? r.json() : []; })
+    .then(function(events) {
+      container.textContent = '';
+      // Defensive client-side filter to past in case the lt. filter is ignored.
+      var today = todayStr();
+      var past = (events || []).filter(function(ev) { return ev.event_date && ev.event_date < today; });
+      if (!past.length) {
+        var empty = document.createElement('p');
+        empty.className = 'chd-events-empty';
+        empty.textContent = 'No past events yet — check back after the next event.';
+        container.appendChild(empty);
+        return;
+      }
+      past.forEach(function(ev) { container.appendChild(renderPastEventRow(ev)); });
+    })
+    .catch(function() {
+      container.textContent = '';
+      var empty = document.createElement('p');
+      empty.className = 'chd-events-empty';
+      empty.textContent = 'Could not load events right now.';
+      container.appendChild(empty);
+    });
+}
+
+// A past-event row reuses renderEventRow as-is, then re-points INTERNAL events
+// at their recap (/events/detail?id=<id>) so the archive links to the recap
+// section the detail page renders. External events keep their original ev.link.
+function renderPastEventRow(ev) {
+  var a = renderEventRow(ev);
+  if (!ev.is_external && ev.id != null) {
+    a.href = '/events/detail?id=' + encodeURIComponent(ev.id);
+    a.removeAttribute('target');
+    a.removeAttribute('rel');
+  }
+  return a;
 }
 
 // Event row — mirrors the events directory's .event-row visual style.

@@ -85,6 +85,19 @@
   .ev-notfound { text-align:center;padding:80px 48px; }
   .ev-notfound h2 { font-size:24px;font-weight:800;margin-bottom:8px; }
   .ev-notfound p { color:var(--muted);margin-bottom:24px; }
+  /* --- Living recap (v1.5) — replaces the muted "ended" banner for past
+        events that have a recap. All content rendered via $()/textContent. --- */
+  .recap-headline { font-size:clamp(20px,3vw,28px);font-weight:800;letter-spacing:-0.02em;line-height:1.2;margin-bottom:16px; }
+  .recap-body { font-size:15px;line-height:1.75;color:var(--ink);margin-bottom:24px; }
+  .recap-body p { margin-bottom:14px; }
+  .recap-attended { display:inline-flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:20px; }
+  .recap-attended .recap-attended-dot { width:7px;height:7px;border-radius:50%;background:var(--moss,#2d4a2f);flex-shrink:0; }
+  .recap-attended b { color:var(--ink);font-weight:500; }
+  .recap-gallery { display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:24px; }
+  .recap-gallery img { width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;display:block;background:var(--sand);border:1px solid var(--sand); }
+  .recap-link { display:inline-flex;align-items:center;gap:8px;padding:12px 22px;background:var(--rust);color:white;border-radius:24px;font-weight:700;font-size:14px;text-decoration:none;transition:background 0.15s; }
+  .recap-link:hover { background:#a8420a; }
+  .recap-link-inert { display:inline-block;font-size:13px;color:var(--muted);word-break:break-all; }
   /* --- Inline RSVP (v1.3) --- */
   .rsvp-count { display:flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:14px; }
   .rsvp-count .rsvp-count-dot { width:7px;height:7px;border-radius:50%;background:var(--moss,#2d4a2f);flex-shrink:0; }
@@ -191,18 +204,87 @@ function setMeta(attr, key, value) {
   el.setAttribute('content', value);
 }
 
+// ---------------------------------------------------------------------------
+// Living recap (v1.5) helpers. The recap columns (recap_url, recap_photos_url,
+// recap_headline, recap_body) arrive on `ev` automatically because loadEvent()
+// already selects * — no query change. Everything below degrades gracefully if
+// migration 0008 hasn't been applied (columns absent => values undefined).
+// ---------------------------------------------------------------------------
+
+// STRICT scheme check for an event-supplied URL. Mirrors the captains-console /
+// admin posture: an untrusted href could carry a javascript:/data: scheme, so a
+// value is only ever turned into a live <a> when it explicitly starts with
+// http:// or https://. Anything else is treated as inert text by the caller.
+function isSafeHttpUrl(val) {
+  return typeof val === 'string' && /^https?:\/\//i.test(val.trim());
+}
+
+// Derive the public URL for a Storage object in the 'media' bucket from its
+// stored path. We build the well-known public-object REST URL rather than
+// trusting any caller-supplied absolute URL; the path segment is encoded so a
+// hostile path can't escape the URL. Returns '' for an unusable input.
+function mediaPublicUrl(path) {
+  if (typeof path !== 'string') return '';
+  var p = path.trim();
+  if (!p) return '';
+  // If a recap already stored an absolute http(s) URL, honor it as-is (still
+  // scheme-checked); otherwise treat it as a bucket-relative object path.
+  if (isSafeHttpUrl(p)) return p;
+  p = p.replace(/^\/+/, ''); // drop any leading slashes before encoding
+  return SUPABASE_URL + '/storage/v1/object/public/media/' +
+    p.split('/').map(encodeURIComponent).join('/');
+}
+
+// Normalize ev.recap_photos_url (a Postgres text[] arrives as a JS array, but
+// tolerate a JSON-string or a single string) into an array of non-empty paths.
+function recapPhotoPaths(ev) {
+  var raw = ev && ev.recap_photos_url;
+  if (raw == null) return [];
+  if (typeof raw === 'string') {
+    var s = raw.trim();
+    if (!s) return [];
+    try { var parsed = JSON.parse(s); if (Array.isArray(parsed)) raw = parsed; else raw = [s]; }
+    catch (e) { raw = [s]; }
+  }
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(function(p){ return typeof p === 'string' && p.trim(); });
+}
+
+// hasRecap === the event is past AND carries at least one piece of recap
+// content. Drives both the banner suppression and the OG/JSON-LD upgrade.
+function eventHasRecap(ev, isPast) {
+  if (!isPast || !ev) return false;
+  return !!(isSafeHttpUrl(ev.recap_url) ||
+    recapPhotoPaths(ev).length ||
+    (ev.recap_headline && String(ev.recap_headline).trim()) ||
+    (ev.recap_body && String(ev.recap_body).trim()));
+}
+
 // Inject per-event share metadata (OG / Twitter / schema.org Event JSON-LD)
 // into <head> client-side. Deferred from v1.0 — unblocked now that approved
 // status + structured data exist. Everything is set via attributes/textContent
 // (never innerHTML), so all event-supplied strings stay inert. Because the
 // parent fetch is RLS-gated to approved-only, drafts/spam never reach here.
-function injectShareMeta(ev) {
+// `isPast` drives the EventScheduled -> EventCompleted status transition; when
+// the event has a recap we prefer a recap photo for the OG/JSON-LD image so a
+// past-event URL unfurls with a recap card.
+function injectShareMeta(ev, isPast) {
   var title = (ev.name || 'Event') + ' — ClawCamp';
   // Prefer the structured description; fall back to the page's default copy.
   var desc = (ev.description || 'ClawCamp event details, speakers, schedule and how to RSVP.')
     .replace(/\s+/g, ' ').trim().slice(0, 300);
   var canonical = SITE_ORIGIN + '/events/detail?id=' + encodeURIComponent(ev.id != null ? ev.id : '');
-  var image = ev.image_url || DEFAULT_OG_IMAGE;
+
+  // When the event has a recap, prefer its first photo for the share card so a
+  // past-event URL unfurls with a recap image. Fall back to the event image,
+  // then the site default. recapImg is also reused for jsonLd.image below.
+  var hasRecap = eventHasRecap(ev, isPast);
+  var recapImg = '';
+  if (hasRecap) {
+    var paths = recapPhotoPaths(ev);
+    if (paths.length) recapImg = mediaPublicUrl(paths[0]);
+  }
+  var image = recapImg || ev.image_url || DEFAULT_OG_IMAGE;
 
   setMeta('name', 'description', desc);
   setMeta('property', 'og:title', title);
@@ -225,10 +307,17 @@ function injectShareMeta(ev) {
     'description': desc,
     'url': canonical
   };
+  // The plan's EventScheduled -> EventCompleted transition: a past event is
+  // marked completed so crawlers stop treating it as an upcoming listing.
+  jsonLd.eventStatus = isPast ? 'https://schema.org/EventCompleted' : 'https://schema.org/EventScheduled';
   if (ev.event_date) {
     jsonLd.startDate = ev.event_date;
   }
-  if (ev.image_url) {
+  // Prefer the recap photo (already scheme-checked / encoded) so the structured
+  // image matches the recap OG card; fall back to the event's own image.
+  if (recapImg) {
+    jsonLd.image = recapImg;
+  } else if (ev.image_url) {
     jsonLd.image = ev.image_url;
   }
   if (ev.venue_name || ev.location) {
@@ -584,11 +673,21 @@ function renderEvent(ev, dbSpeakers, dbSchedule, dbSponsors) {
   content.style.display = '';
   document.title = ev.name + ' — ClawCamp';
 
+  // Determine event lifecycle once up front: upcoming / today / past, and
+  // whether a past event carries a living recap. Computed here (not just in the
+  // status-banner block) so injectShareMeta() can mark EventCompleted and the
+  // recap section/CTA can react. hasRecap is false unless isPast (graceful
+  // fallback: a past event with no recap keeps the muted "ended" banner).
+  var today = new Date();
+  var todayStr = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  var isPast = ev.event_date < todayStr;
+  var hasRecap = eventHasRecap(ev, isPast);
+
   // Per-event share metadata (OG / Twitter / JSON-LD). Built purely via DOM
   // APIs + textContent/JSON.stringify (never innerHTML) so it stays XSS-safe.
   // The parent fetch is RLS-gated to approved-only, so drafts/spam can never
-  // reach this code path and emit tags.
-  injectShareMeta(ev);
+  // reach this code path and emit tags. isPast drives EventCompleted + recap OG.
+  injectShareMeta(ev, isPast);
 
   dbSpeakers = dbSpeakers || [];
   dbSchedule = dbSchedule || [];
@@ -624,14 +723,14 @@ function renderEvent(ev, dbSpeakers, dbSchedule, dbSponsors) {
   dot.style.cssText = 'width:8px;height:8px;border-radius:50%;background:white;animation:live-pulse 1.4s ease-in-out infinite';
   statusBar.appendChild(dot);
   statusBar.appendChild(document.createTextNode('This event is happening right now'));
-  // Determine event lifecycle: upcoming / today / past
-  var today = new Date();
-  var todayStr = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
-  var isPast = ev.event_date < todayStr;
+  // Lifecycle (isPast/hasRecap) was computed up top. A past event that carries
+  // a recap suppresses the muted "ended" banner in favor of the living recap
+  // section rendered in the main column below; a past event WITHOUT a recap
+  // keeps the exact muted "ended" banner unchanged (graceful fallback).
   if (ev.event_date === todayStr) {
     statusBar.classList.add('visible');
-  } else if (isPast) {
-    // Past event — show a muted "ended" banner instead
+  } else if (isPast && !hasRecap) {
+    // Past event, no recap — show a muted "ended" banner instead
     statusBar.textContent = '';
     statusBar.style.background = 'var(--muted)';
     statusBar.appendChild(document.createTextNode('📦 This event has ended — browse '));
@@ -676,7 +775,10 @@ function renderEvent(ev, dbSpeakers, dbSchedule, dbSponsors) {
   left.appendChild(metaBlock);
 
   if (ev.link) {
-    var rsvp = $('a', 'ev-rsvp-btn', isPast ? 'View on Luma →' : 'RSVP on Luma →');
+    // Past events keep the (muted) Luma link as a secondary action; when a
+    // recap exists, relabel it to read as a wrap-up reference rather than a CTA.
+    var heroLumaLabel = isPast ? (hasRecap ? 'View event on Luma →' : 'View on Luma →') : 'RSVP on Luma →';
+    var rsvp = $('a', 'ev-rsvp-btn', heroLumaLabel);
     rsvp.href = ev.link; rsvp.target = '_blank'; rsvp.rel = 'noopener';
     if (isPast) rsvp.style.background = 'var(--muted)';
     left.appendChild(rsvp);
@@ -697,6 +799,84 @@ function renderEvent(ev, dbSpeakers, dbSchedule, dbSponsors) {
   // --- Body ---
   var body = $('div', 'ev-body');
   var main = $('div', 'ev-main');
+
+  // --- Living recap (v1.5) ---
+  // Only for a past event that actually carries recap content (hasRecap). Leads
+  // the main column so the page reads as a wrap-up, not a dead listing. Every
+  // value is rendered via $()/textContent/setAttribute — never innerHTML — so a
+  // hostile recap_headline/recap_body/photo path stays inert.
+  if (hasRecap) {
+    var recapSec = $('div', 'ev-section');
+    recapSec.appendChild($('div', 'ev-section-title', 'Recap'));
+
+    // Headline (optional).
+    if (ev.recap_headline && String(ev.recap_headline).trim()) {
+      recapSec.appendChild($('h2', 'recap-headline', String(ev.recap_headline)));
+    }
+
+    // Attendee line — best-effort, reuses the SAME rsvp_count RPC buildRsvp()
+    // calls. Inserted only when a positive count comes back; renders nothing on
+    // any failure (RPC absent, network error, zero/non-numeric).
+    if (ev.id != null) {
+      var attended = $('div', 'recap-attended');
+      fetch(SUPABASE_URL + '/rest/v1/rpc/rsvp_count', {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_id: ev.id })
+      }).then(function(r){ return r.ok ? r.json() : null; }).then(function(n) {
+        var num = typeof n === 'number' ? n : (n && typeof n.count === 'number' ? n.count : null);
+        if (num == null || isNaN(num) || num <= 0) return; // no count -> render nothing
+        attended.appendChild($('span', 'recap-attended-dot'));
+        var line = $('span'); line.appendChild($('b', null, String(num)));
+        line.appendChild(document.createTextNode(' attended'));
+        attended.appendChild(line);
+      }).catch(function(){ /* best-effort — render nothing on failure */ });
+      recapSec.appendChild(attended);
+    }
+
+    // Body — split on blank lines into paragraphs, same as the Description block.
+    if (ev.recap_body && String(ev.recap_body).trim()) {
+      var recapBody = $('div', 'recap-body');
+      String(ev.recap_body).split(/\n\n+/).forEach(function(para) {
+        recapBody.appendChild($('p', null, para));
+      });
+      recapSec.appendChild(recapBody);
+    }
+
+    // Photo gallery — each stored Storage path resolved to its public media URL,
+    // rendered as an <img> with src/alt set by attribute, lazy-loaded, and an
+    // onerror that drops a broken image so a stale path leaves no gap.
+    var photoPaths = recapPhotoPaths(ev);
+    if (photoPaths.length) {
+      var gallery = $('div', 'recap-gallery');
+      photoPaths.forEach(function(path, i) {
+        var url = mediaPublicUrl(path);
+        if (!url) return;
+        var pimg = $('img');
+        pimg.src = url;
+        pimg.alt = (ev.name ? ev.name + ' — ' : '') + 'recap photo ' + (i + 1);
+        pimg.loading = 'lazy';
+        pimg.onerror = function(){ this.remove(); };
+        gallery.appendChild(pimg);
+      });
+      if (gallery.childNodes.length) recapSec.appendChild(gallery);
+    }
+
+    // Recording / slides link. STRICT scheme check (mirrors captains-console):
+    // only an http(s) value becomes a live <a>; anything else renders as inert
+    // text so a javascript:/data: scheme can never be clicked.
+    if (ev.recap_url && String(ev.recap_url).trim()) {
+      if (isSafeHttpUrl(ev.recap_url)) {
+        var recapLink = $('a', 'recap-link', '▶ Watch the recording / slides');
+        recapLink.href = ev.recap_url; recapLink.target = '_blank'; recapLink.rel = 'noopener';
+        recapSec.appendChild(recapLink);
+      } else {
+        recapSec.appendChild($('div', 'recap-link-inert', String(ev.recap_url)));
+      }
+    }
+
+    main.appendChild(recapSec);
+  }
 
   // Description
   if (ev.description || extras.fullDescription) {
@@ -784,7 +964,10 @@ function renderEvent(ev, dbSpeakers, dbSchedule, dbSponsors) {
   var ctaCard = $('div', 'sidebar-card');
   var cta = $('div', 'sidebar-cta');
   if (ev.link) {
-    var rsvpSide = $('a', 'sidebar-cta-primary', 'RSVP on Luma →');
+    // Same posture as the hero button: a past event can't be RSVP'd, so relabel
+    // (more so when a recap exists) while preserving the Luma fallback link.
+    var sideLumaLabel = isPast ? (hasRecap ? 'View event on Luma →' : 'View on Luma →') : 'RSVP on Luma →';
+    var rsvpSide = $('a', 'sidebar-cta-primary', sideLumaLabel);
     rsvpSide.href = ev.link; rsvpSide.target = '_blank'; rsvpSide.rel = 'noopener';
     cta.appendChild(rsvpSide);
   }
