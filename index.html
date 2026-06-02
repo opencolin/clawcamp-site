@@ -779,18 +779,46 @@
     padding: 64px 48px 0;
     max-width: 800px;
   }
+  .recent-toggle {
+    all: unset;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    width: 100%;
+    margin-bottom: 8px;
+  }
   .recent-events-heading h2 {
     font-size: 24px;
     font-weight: 800;
     letter-spacing: -0.03em;
-    margin-bottom: 8px;
+    margin-bottom: 0;
   }
   .recent-events-heading h2 em { font-style: normal; color: var(--rust); }
+  .recent-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0;
+  }
+  .recent-chevron {
+    margin-left: auto;
+    font-size: 18px;
+    color: var(--muted);
+    transition: transform 0.2s ease;
+  }
+  .recent-toggle[aria-expanded="true"] .recent-chevron { transform: rotate(180deg); }
+  .recent-toggle:hover .recent-chevron,
+  .recent-toggle:hover h2 { color: var(--rust); }
   .recent-events-heading > p {
     font-size: 14px;
     color: var(--muted);
     margin-bottom: 0;
   }
+  /* Collapsed by default — expanded by toggleRecentEvents() */
+  #recent-events-main.recent-collapsed { display: none; }
   #recent-events-main .event-row { opacity: 0.78; transition: opacity 0.15s ease; }
   #recent-events-main .event-row:hover { opacity: 1; }
   #recent-events-main .event-row .rsvp-btn { background: transparent; color: var(--muted); border: 1px solid var(--sand); }
@@ -3409,10 +3437,13 @@
 
 <!-- Recent Events -->
 <div class="recent-events-heading" id="recent-events">
-  <h2>Recent <em>Events</em></h2>
+  <button class="recent-toggle" type="button" id="recent-toggle" aria-expanded="false" aria-controls="recent-events-main" onclick="toggleRecentEvents()">
+    <h2>Recent <em>Events</em> <span class="recent-count" id="recent-count"></span></h2>
+    <span class="recent-chevron" aria-hidden="true">&#9662;</span>
+  </button>
   <p>What's been happening across the ClawCamp community.</p>
 </div>
-<div class="main" id="recent-events-main"></div>
+<div class="main recent-collapsed" id="recent-events-main"></div>
 
 <div class="submit-event-section" id="submit-event">
   <h2>Submit an <em>Event</em></h2>
@@ -4394,12 +4425,17 @@ function buildRecentEvents() {
     return (b.dataset.date || '').localeCompare(a.dataset.date || '');
   });
 
+  var countEl = document.getElementById('recent-count');
+  if (countEl) countEl.textContent = past.length ? '(' + past.length + ')' : '';
+
   if (past.length === 0) {
     if (heading) heading.style.display = 'none';
     container.style.display = 'none';
     return;
   }
   if (heading) heading.style.display = '';
+  // Defer container visibility to the .recent-collapsed class (collapsed by
+  // default); clearing the inline style lets the class govern.
   container.style.display = '';
 
   var monthNames = ['January','February','March','April','May','June',
@@ -4460,6 +4496,15 @@ function toggleFilters() {
   var btn = document.getElementById('filters-toggle');
   panel.classList.toggle('open');
   btn.classList.toggle('active');
+}
+
+// Recent Events is collapsed by default; this expands/collapses it.
+function toggleRecentEvents() {
+  var container = document.getElementById('recent-events-main');
+  var btn = document.getElementById('recent-toggle');
+  if (!container) return;
+  var collapsed = container.classList.toggle('recent-collapsed');
+  if (btn) btn.setAttribute('aria-expanded', String(!collapsed));
 }
 
 function switchTimeTab(tab, btn) {
