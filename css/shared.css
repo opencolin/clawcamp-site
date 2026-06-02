@@ -74,6 +74,22 @@ body, nav, .site-footer, .nav-more-dropdown {
 .dark-hero nav:not(.nav-scrolled) .theme-toggle { color: var(--paper); border-color: rgba(255,255,255,0.35); }
 .dark-hero nav:not(.nav-scrolled) .theme-toggle:hover { border-color: var(--paper); }
 
+/* Intentionally-dark decorative surfaces (hero, dark bands, featured event
+   card, sponsor logo panels) are designed dark-on-light with some fixed-light
+   child text. In dark mode the neutral vars would flip them to LIGHT, hiding
+   that fixed-light text. Pin them to a constant dark so they look identical in
+   both themes. (rust/accent child colors keep their own rule, so they stay.) */
+html[data-theme="dark"] .hero,
+html[data-theme="dark"] .section-dark,
+html[data-theme="dark"] .cta-band,
+html[data-theme="dark"] .featured-event,
+html[data-theme="dark"] .sponsor-logo-card {
+  background-color: #14130f;
+}
+html[data-theme="dark"] .featured-left,
+html[data-theme="dark"] .section-dark,
+html[data-theme="dark"] .cta-band { color: #f5f2ec; }
+
 /* ---- Nav ---- */
 nav {
   display: flex;
