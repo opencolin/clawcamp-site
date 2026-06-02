@@ -156,7 +156,6 @@
 <div id="site-footer"></div>
 <script src="/js/config.js"></script>
 <script src="/js/nav.js"></script>
-<script src="/js/event-extras.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106.2/dist/umd/supabase.js" integrity="sha384-m/8UHFJHeU6nrCKP2hBnAseuvAKUmLF+8e5bWos5CJL023vuxX7kiVL5t8yjsJhV" crossorigin="anonymous"></script>
 <script>
 var SUPABASE_URL = window.CLAWCAMP_CONFIG.SUPABASE_URL;
@@ -348,8 +347,9 @@ var eventSlug = getParam('slug');
 
 var REST_HEADERS = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
 
-// Fetch a child table by event_id, returning [] on any failure so callers can
-// fall back to the static EVENT_EXTRAS registry without the page regressing.
+// Fetch a child table by event_id, returning [] on any failure so a transient
+// error (or a not-yet-applied migration) just yields an empty section rather
+// than regressing the page — the static EVENT_EXTRAS registry is retired (v2.0).
 function fetchChild(table, id, select) {
   var url = SUPABASE_URL + '/rest/v1/' + table +
     '?event_id=eq.' + encodeURIComponent(id) +
@@ -376,10 +376,12 @@ function loadEvent() {
     .then(function(rows) {
       if (!rows || !rows.length) { showNotFound(); return; }
       var ev = rows[0];
-      // DB-first: pull structured content from the per-event child tables
+      // DB-only: pull structured content from the per-event child tables
       // (slice A grants anon SELECT on these; the events approved-only RLS
-      // already gated the parent fetch). Each resolves to [] on failure so we
-      // fall back to window.EVENT_EXTRAS without regressing the page.
+      // already gated the parent fetch). Each resolves to [] on failure, so a
+      // sparsely-populated or briefly-unreachable DB just hides the rich
+      // sections while the core event header still renders (the static
+      // EVENT_EXTRAS registry is retired — there is no longer a JS fallback).
       if (ev.id == null) {
         renderEvent(ev, [], [], []);
         return;
@@ -707,12 +709,17 @@ function renderEvent(ev, dbSpeakers, dbSchedule, dbSponsors) {
     return { name: row.sponsor_name, url: row.sponsor_url, logo: row.logo_url };
   });
 
-  // DB-first with static fallback: use DB rows when present, else fall back to
-  // the static EVENT_EXTRAS registry ONLY when there are ZERO DB rows. This is
-  // why id-173 keeps rendering with zero migration risk, while a DB-sourced
-  // event renders straight from its tables. fullDescription has no DB column,
-  // so it always resolves from extras (see the Description section below).
-  var extras = window.EVENT_EXTRAS && window.EVENT_EXTRAS[ev.id] || {};
+  // DB-only (v2.0): the static js/event-extras.js registry has been RETIRED now
+  // that the DB-first path shipped in v1.2 — `extras` is now always an empty
+  // object, so every rich section reads SOLELY from the per-event child tables.
+  // `extras` is kept as an empty stand-in (rather than ripped out) so the
+  // section-gating below is unchanged: an event with zero child rows and no
+  // description simply omits those sections while the core header/date/venue/
+  // RSVP (built straight from the events row) still render — i.e. a real but
+  // sparsely-populated row never produces a blank page. fullDescription has no
+  // DB column, so it now always resolves to undefined and the Description
+  // section is driven purely by ev.description.
+  var extras = {};
   var speakers = dbSpeakersN.length ? dbSpeakersN : (extras.speakers || []);
   var schedule = dbScheduleN.length ? dbScheduleN : (extras.schedule || []);
   var sponsorsFromSrc = dbSponsorsN.length ? dbSponsorsN : (extras.sponsors || []);

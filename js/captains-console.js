@@ -1,8 +1,22 @@
-// ClawCamp — Captain's Console (v1.4 RBAC).
+// ClawCamp — Captain's Console (v1.4 RBAC; v2.0 health + directory).
 //
 // A SELF-CONTAINED dashboard module. It mounts into #captains-console-root
 // (created by the dashboard slice). If that element is absent it NO-OPS
 // silently, so the dashboard never regresses before this ships.
+//
+// v2.0 ADDS two PRIVATE captain/admin-only sections per captained chapter,
+// rendered on the SAME gated path as the roster (renderChapterConsole):
+//   * renderHealth()    — a PRIVATE momentum dashboard (follower growth, RSVP
+//     conversion, attendance trend) framed as "your city is forming", NEVER a
+//     cross-chapter leaderboard. Reads the chapter_stats VIEW (counts only — no
+//     roster leak).
+//   * renderDirectory() — an OPT-IN member directory (PII-free @username/photo/
+//     bio) read from a chapter_directory VIEW filtered to profiles that opted in
+//     (profiles.is_public). It NEVER lists non-opted-in members.
+// BOTH degrade to a NO-OP / opt-in empty state when their stat source / view /
+// column is absent (the provisioning migration 0009 — see the RUNBOOK note at
+// the BOTTOM of this file), exactly like the memberships-404 fallback, so the
+// dashboard never regresses before migrations are applied.
 //
 // SECURITY MODEL — read this before touching anything:
 //   The AUTHORITATIVE gate is RLS (migration 0006, rbac-data-spine slice):
@@ -353,6 +367,239 @@
       container.textContent = '';
       container.appendChild(el('div', 'cc-roster-empty', 'No RSVPs yet.'));
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Number helpers for the health panel — coerce a value to a non-negative
+  // integer (NaN/null -> null so we can render an em-dash for "not available"),
+  // and a whole-percent string from a numerator/denominator.
+  // ---------------------------------------------------------------------------
+  function intOrNull(v) {
+    if (v == null) return null;
+    var n = Number(v);
+    if (!isFinite(n)) return null;
+    return Math.max(0, Math.round(n));
+  }
+  function pctOf(part, whole) {
+    if (whole == null || whole <= 0 || part == null) return null;
+    return Math.round((part / whole) * 100);
+  }
+
+  // ---------------------------------------------------------------------------
+  // FEATURE 5 — PRIVATE captain health dashboard ("your city is forming").
+  //
+  // Rendered ONLY on the captain/admin console path that already gates the
+  // roster (renderChapterConsole) — there is NO public surface for these numbers.
+  // This is INTENTIONALLY framed as momentum for THIS chapter ("X new followers
+  // this month", "X% of followers RSVP'd") and NEVER as a leaderboard or a
+  // cross-chapter ranking (council note: a public ranking demoralizes small/new
+  // chapters — health stays private + non-comparative).
+  //
+  // DATA SOURCE: the chapter_stats VIEW (anon/auth-readable aggregate; a VIEW
+  // runs with its owner's privileges, so reading it exposes COUNTS only and
+  // never the sealed rsvps/chapter_follows rosters — the same PII-safe pattern
+  // the public chapter cards use). We read it with authFetch and filter to this
+  // chapter by id.
+  //   * total_attendees / events_hosted ship in migration 0008.
+  //   * followers + new_followers_30d are EXPECTED from the provisioning
+  //     migration (0009) — see the RUNBOOK note at the bottom of this file. Until
+  //     0009 is applied those columns come back undefined; we render an em-dash
+  //     for any missing stat and SKIP the derived "conversion"/"growth" lines,
+  //     never showing a wrong or zero-divided number.
+  //
+  // GRACEFUL FALLBACK: if chapter_stats 404s (view absent), the read errors, or
+  // no row comes back, the whole panel NO-OPs (renders nothing) — exactly like
+  // the module's memberships-404 fallback, so the console never regresses.
+  // Every number is written via textContent (the XSS invariant), though these
+  // are DB-derived integers, not user free-text.
+  // ---------------------------------------------------------------------------
+  function renderHealth(chapter, block) {
+    // `block` is a pre-positioned, EMPTY .cc-block appended synchronously by the
+    // caller (so it keeps its top-of-panel position + correct :first-of-type
+    // border). We fill it async; on 404/error/no-row we REMOVE it so an absent
+    // migration leaves no empty section behind (graceful NO-OP).
+    function noop() {
+      if (block && block.parentNode) block.parentNode.removeChild(block);
+    }
+
+    // chapter_stats columns: id, slug, upcoming_events, total_events,
+    // events_hosted, total_attendees (0008) + followers, new_followers_30d (0009).
+    // select=* so newly-added columns ride along without a code change; we never
+    // 400 on an unknown column because we ask for everything.
+    authFetch(SUPABASE_URL + '/rest/v1/chapter_stats?select=*' +
+      '&id=eq.' + encodeURIComponent(chapter.id) + '&limit=1', {
+      headers: {}
+    }).then(function (r) {
+      if (!r || r.status === 404 || !r.ok) return null; // view absent / no access
+      return r.json();
+    }).then(function (rows) {
+      if (!rows || !rows.length) { noop(); return; } // no stats row -> remove slot
+      var s = rows[0];
+
+      var followers = intOrNull(s.followers);
+      var newFollowers = intOrNull(s.new_followers_30d);
+      var attendees = intOrNull(s.total_attendees);
+      var hosted = intOrNull(s.events_hosted);
+
+      block.appendChild(el('div', 'cc-block-title', 'Chapter momentum'));
+      block.appendChild(el('div', 'cc-health-lede',
+        'A private snapshot of how your city is forming. Only you (and ClawCamp ' +
+        'admins) can see this — it’s not a ranking.'));
+
+      var grid = el('div', 'cc-health-grid');
+
+      // A stat tile: a big number (or em-dash) + a label + optional sub-note.
+      function tile(value, label, note) {
+        var t = el('div', 'cc-health-tile');
+        t.appendChild(el('div', 'cc-health-num', value == null ? '—' : String(value)));
+        t.appendChild(el('div', 'cc-health-label', label));
+        if (note) t.appendChild(el('div', 'cc-health-note', note));
+        return t;
+      }
+
+      // Follower growth — total followers + "this month" momentum sub-note.
+      var growthNote = null;
+      if (newFollowers != null) {
+        growthNote = (newFollowers === 0)
+          ? 'No new followers this month yet'
+          : ('+' + newFollowers + (newFollowers === 1 ? ' new follower' : ' new followers') + ' this month');
+      }
+      grid.appendChild(tile(followers, 'followers', growthNote));
+
+      // RSVP conversion — going|waitlist attendees as a share of followers
+      // (a proxy for "how many of the people who follow you actually show up").
+      // Only shown when we have BOTH a follower count > 0 and an attendee count,
+      // so we never divide by zero or imply 0% from missing data.
+      var conv = pctOf(attendees, followers);
+      grid.appendChild(tile(
+        conv == null ? null : conv + '%',
+        'RSVP conversion',
+        conv == null ? null : (attendees + ' RSVPs across ' + followers + ' followers')
+      ));
+
+      // Attendance trend — events actually hosted + the total people who came.
+      grid.appendChild(tile(hosted, 'events hosted',
+        attendees == null ? null
+          : (attendees + (attendees === 1 ? ' attendee' : ' attendees') + ' all-time')));
+
+      block.appendChild(grid);
+    }).catch(function () { noop(); });
+  }
+
+  // ---------------------------------------------------------------------------
+  // FEATURE 6 — OPT-IN per-chapter member directory ("turning chapters into
+  // networks"). Rendered on the captain/admin console panel.
+  //
+  // OPT-IN IS NON-NEGOTIABLE: we render ONLY profiles that explicitly opted into
+  // the directory. We read a dedicated chapter_directory VIEW that JOINs this
+  // chapter's followers/members to profiles and exposes ONLY PII-FREE public
+  // profile fields (username / photo_path / bio / display_name) for rows whose
+  // profile set the opt-in flag (profiles.is_public = true). We do NOT read
+  // chapter_follows + profiles directly here, because (a) the captain's
+  // chapter_follows RLS is select-OWN-only (0007) so it wouldn't list other
+  // members anyway, and (b) joining raw follows would risk listing people who
+  // never opted in. The VIEW (owner-privileged, opt-in-filtered, PII-free) is
+  // the correct surface.
+  //
+  // PROVISIONING DEPENDENCY (see the RUNBOOK note at the bottom of this file):
+  // chapter_directory + the profiles.is_public opt-in column are EXPECTED from
+  // migration 0009. Until that is applied the view 404s and we show the
+  // 'No members have opted in yet' EMPTY STATE — we NEVER fall back to listing
+  // everyone (that would leak non-opted-in members). The empty state is also
+  // what shows when the view exists but nobody has opted in yet.
+  //
+  // XSS: @username, the photo's alt text, and bio are all untrusted user content
+  // rendered via el()/textContent and img.src/img.alt — NEVER innerHTML. The
+  // photo URL is derived client-side from a trusted 'media' bucket path (same as
+  // the dashboard avatar + recap gallery), not injected as markup.
+  // ---------------------------------------------------------------------------
+  function renderDirectory(chapter, container) {
+    var block = el('div', 'cc-block cc-directory');
+    block.appendChild(el('div', 'cc-block-title', 'Member directory'));
+    block.appendChild(el('div', 'cc-directory-lede',
+      'Members who opted in to your chapter directory. Members control this from ' +
+      'their dashboard profile.'));
+    var listEl = el('div', 'cc-directory-list');
+    listEl.appendChild(el('div', 'cc-roster-loading', 'Loading directory…'));
+    block.appendChild(listEl);
+    container.appendChild(block);
+
+    function empty() {
+      listEl.textContent = '';
+      listEl.appendChild(el('div', 'cc-directory-empty', 'No members have opted in yet.'));
+    }
+
+    // chapter_directory exposes (at least): chapter_id, username, display_name,
+    // bio, photo_path — opt-in-filtered + PII-free. select=* so the view can add
+    // columns without a code change. If the view is absent (404) or errors, we
+    // show the SAME opt-in empty state (never a leak).
+    authFetch(SUPABASE_URL + '/rest/v1/chapter_directory?select=*' +
+      '&chapter_id=eq.' + encodeURIComponent(chapter.id) +
+      '&order=username.asc&limit=200', {
+      headers: {}
+    }).then(function (r) {
+      if (!r || r.status === 404 || !r.ok) return null; // view absent / no access -> empty state
+      return r.json();
+    }).then(function (rows) {
+      if (rows === null) { empty(); return; }
+      if (!rows.length) { empty(); return; }
+
+      listEl.textContent = '';
+      var grid = el('div', 'cc-directory-grid');
+      rows.forEach(function (m) {
+        var card = el('div', 'cc-member-card');
+
+        // Avatar: derive a public URL from the trusted media-bucket path. Falls
+        // back to initials when no photo / SDK unavailable. alt text = username
+        // (untrusted -> set via .alt, which is attribute-safe, not markup).
+        var avatar = el('div', 'cc-member-avatar');
+        var handle = (typeof m.username === 'string' && m.username) ? m.username : '';
+        var photoUrl = null;
+        if (typeof m.photo_path === 'string' && m.photo_path) {
+          try {
+            var client = window.clawAuth && window.clawAuth.client;
+            if (client && client.storage) {
+              var pub = client.storage.from('media').getPublicUrl(m.photo_path);
+              photoUrl = pub && pub.data && pub.data.publicUrl;
+            }
+          } catch (e) { photoUrl = null; }
+        }
+        if (photoUrl) {
+          var img = document.createElement('img');
+          img.src = photoUrl;
+          img.alt = handle ? ('@' + handle) : 'Member photo';
+          img.loading = 'lazy';
+          avatar.appendChild(img);
+        } else {
+          // Initials from display name or handle (textContent — safe).
+          var basis = (typeof m.display_name === 'string' && m.display_name) ? m.display_name : handle;
+          var initials = basis
+            ? basis.split(/\s+/).slice(0, 2).map(function (p) { return p[0] || ''; }).join('').toUpperCase()
+            : '?';
+          avatar.textContent = initials || '?';
+        }
+        card.appendChild(avatar);
+
+        var info = el('div', 'cc-member-info');
+        // Display name (optional) then the @handle.
+        if (typeof m.display_name === 'string' && m.display_name) {
+          info.appendChild(el('div', 'cc-member-name', m.display_name));
+        }
+        if (handle) {
+          info.appendChild(el('div', 'cc-member-handle', '@' + handle));
+        } else if (!(typeof m.display_name === 'string' && m.display_name)) {
+          // Neither a name nor a handle — show a neutral placeholder rather than blank.
+          info.appendChild(el('div', 'cc-member-name', 'Member'));
+        }
+        // Bio (optional) — untrusted; textContent only.
+        if (typeof m.bio === 'string' && m.bio) {
+          info.appendChild(el('div', 'cc-member-bio', m.bio));
+        }
+        card.appendChild(info);
+        grid.appendChild(card);
+      });
+      listEl.appendChild(grid);
+    }).catch(function () { empty(); });
   }
 
   // ---------------------------------------------------------------------------
@@ -782,8 +1029,19 @@
 
     if (chapter.city) panel.appendChild(el('div', 'cc-chapter-city', chapter.city));
 
+    // PRIVATE health dashboard first (momentum-forward), then the editor, the
+    // event list, and the opt-in member directory. We append an EMPTY .cc-block
+    // for health synchronously so it holds the top position (and the correct
+    // :first-of-type border) regardless of when its read resolves; renderHealth
+    // fills it, or REMOVES it on 404/error/no-row so a missing migration (0009)
+    // leaves no empty section and can't break the panel — the editor + events
+    // render regardless of whether stats/directory are available.
+    var healthBlock = el('div', 'cc-block cc-health');
+    panel.appendChild(healthBlock);
+    renderHealth(chapter, healthBlock);
     panel.appendChild(renderChapterEditor(chapter));
     renderEventsSection(chapter, panel);
+    renderDirectory(chapter, panel);
 
     return panel;
   }
@@ -838,7 +1096,8 @@
         var intro = el('div', 'cc-intro');
         intro.appendChild(el('div', 'cc-intro-title', 'Captain’s Console'));
         intro.appendChild(el('div', 'cc-intro-sub',
-          'Manage your chapter, review submitted events, and check in RSVPs.'));
+          'See your chapter’s momentum, manage your chapter, review submitted ' +
+          'events, check in RSVPs, and meet the members who opted into your directory.'));
         root.appendChild(intro);
 
         panels.forEach(function (p) { root.appendChild(p); });
@@ -851,4 +1110,45 @@
   } else {
     boot();
   }
+
+  // ===========================================================================
+  // RUNBOOK — DB dependencies for the v2.0 health + directory sections.
+  // ===========================================================================
+  // These read paths DEGRADE GRACEFULLY today (NO-OP / opt-in empty state) and
+  // light up once the provisioning migration (0009, owned by the provisioning
+  // slice — admin applies it server-side; anon cannot run DDL) adds the
+  // following. ALL of these are PII-SAFE: counts and already-public profile
+  // fields only, never an email or token, and the opt-in column DEFAULTS to
+  // FALSE so nobody appears in a directory until they choose to.
+  //
+  // 1) profiles.is_public  boolean NOT NULL DEFAULT false
+  //      The per-member directory opt-in. Members toggle it from their dashboard
+  //      profile; the directory shows ONLY rows where is_public = true. Default
+  //      false = nobody is listed until they opt in (no leak before opt-in).
+  //
+  // 2) public.chapter_directory  VIEW (anon/auth SELECT, owner-privileged like
+  //    chapter_stats so it leaks no roster) exposing PII-FREE fields per opted-in
+  //    member of a chapter, e.g.:
+  //      SELECT cf.chapter_id, p.username, p.display_name, p.bio, p.photo_path
+  //      FROM public.chapter_follows cf
+  //      JOIN public.profiles p ON p.id = cf.profile_id
+  //      WHERE p.is_public = true;     -- opt-in gate
+  //    (memberships may be UNION'd in if chapter membership should also list.)
+  //    The view exposes NO email/PII — only the public profile columns the
+  //    profiles_select_public policy already makes readable (0005).
+  //
+  // 3) public.chapter_stats  VIEW — APPEND two columns (additive; CREATE OR
+  //    REPLACE VIEW may add trailing columns, keeping id/slug/upcoming_events/
+  //    total_events/events_hosted/total_attendees in order):
+  //      followers          = count of chapter_follows for the chapter
+  //      new_followers_30d  = count of chapter_follows with
+  //                           created_at >= current_date - interval '30 days'
+  //    These power the follower-growth + RSVP-conversion lines. The existing
+  //    chapters page already reads stat.followers via numOr(...,0), so adding it
+  //    also lights up that public count — still an aggregate, no roster exposed.
+  //
+  // Until 0009 ships: renderHealth() renders an em-dash for missing stats and
+  // skips the derived lines; renderDirectory() shows 'No members have opted in
+  // yet'. Neither ever leaks a non-opted-in member or a wrong number.
+  // ===========================================================================
 })();

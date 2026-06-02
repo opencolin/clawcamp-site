@@ -9,7 +9,10 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
-        "npm:@playwright/test@^1.49.0"
+        "npm:@axe-core/playwright@^4.10.1",
+        "npm:@lhci/cli@0.14",
+        "npm:@playwright/test@^1.49.0",
+        "npm:serve@^14.2.4"
       ]
     }
   }
