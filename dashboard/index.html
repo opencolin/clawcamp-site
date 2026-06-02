@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script>(function(){try{var t=localStorage.getItem("claw-theme");if(!t)t=(window.matchMedia&&matchMedia("(prefers-color-scheme:dark)").matches)?"dark":"light";if(t==="dark")document.documentElement.setAttribute("data-theme","dark");}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard — ClawCamp</title>
     <link rel="icon" type="image/png" href="/favicon.png">
@@ -262,7 +263,7 @@
     width: 18px;
     left: 3px;
     bottom: 3px;
-    background: white;
+    background: var(--surface);
     border-radius: 50%;
     transition: transform 0.2s;
   }
@@ -434,7 +435,7 @@
     font-family: inherit;
     font-size: 14px;
     color: var(--ink);
-    background: white;
+    background: var(--surface);
     transition: border-color 0.15s;
     outline: none;
     width: 100%;

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script>(function(){try{var t=localStorage.getItem("claw-theme");if(!t)t=(window.matchMedia&&matchMedia("(prefers-color-scheme:dark)").matches)?"dark":"light";if(t==="dark")document.documentElement.setAttribute("data-theme","dark");}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Submit an Event — ClawCamp</title>
 <meta name="description" content="Submit your ClawCamp event for review and get listed on the global calendar.">
@@ -26,7 +27,7 @@
   .import-btn {
     display: inline-flex; align-items: center; gap: 8px;
     padding: 11px 20px; border-radius: 8px;
-    border: 1px solid var(--sand); background: white;
+    border: 1px solid var(--sand); background: var(--surface);
     font-family: inherit; font-size: 14px; font-weight: 600;
     color: var(--ink); cursor: pointer; transition: all 0.15s; white-space: nowrap;
   }
@@ -57,7 +58,7 @@
   /* Form cards */
   .form-card {
     border: 1px solid var(--sand); border-radius: 12px;
-    padding: 28px; margin-bottom: 20px; background: white;
+    padding: 28px; margin-bottom: 20px; background: var(--surface);
   }
   .form-card h3 { font-size: 17px; font-weight: 700; margin-bottom: 20px; }
   .form-card .card-divider { border: none; border-top: 1px solid var(--sand); margin: 20px 0; }
@@ -76,7 +77,7 @@
     width: 100%; padding: 12px 14px;
     border: 1px solid var(--sand); border-radius: 8px;
     font-family: inherit; font-size: 14px; color: var(--ink);
-    background: white; transition: border-color 0.15s; outline: none;
+    background: var(--surface); transition: border-color 0.15s; outline: none;
   }
   .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--rust); }
   .field textarea { resize: vertical; }
@@ -89,7 +90,7 @@
   .format-toggle {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 10px 18px; border-radius: 8px;
-    border: 2px solid var(--sand); background: white;
+    border: 2px solid var(--sand); background: var(--surface);
     font-family: inherit; font-size: 13px; font-weight: 700;
     color: var(--muted); cursor: pointer; transition: all 0.15s;
   }
@@ -100,7 +101,7 @@
   .speaker-row {
     display: flex; align-items: center; gap: 12px;
     padding: 14px 16px; border: 1px solid var(--sand);
-    border-radius: 8px; background: white;
+    border-radius: 8px; background: var(--surface);
   }
   .speaker-thumb {
     width: 44px; height: 44px; border-radius: 50%;
@@ -133,7 +134,7 @@
     display: grid; grid-template-columns: 120px 1fr auto;
     gap: 12px; align-items: center;
     padding: 12px 16px; border: 1px solid var(--sand);
-    border-radius: 8px; background: white;
+    border-radius: 8px; background: var(--surface);
   }
   .schedule-time { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; }
   .schedule-topic { font-size: 14px; }
@@ -151,7 +152,7 @@
   }
   .btn-draft {
     padding: 12px 24px; border-radius: 8px;
-    border: 1px solid var(--sand); background: white;
+    border: 1px solid var(--sand); background: var(--surface);
     font-family: inherit; font-size: 14px; font-weight: 600;
     color: var(--ink); cursor: pointer; transition: all 0.15s;
   }
@@ -172,7 +173,7 @@
   }
   .modal-overlay.open { display: flex; }
   .modal {
-    background: white; border-radius: 16px; padding: 36px;
+    background: var(--surface); border-radius: 16px; padding: 36px;
     max-width: 500px; width: 100%; position: relative;
   }
   .modal-close {
@@ -348,7 +349,7 @@
           <label>Search Existing Contacts <span class="note">&mdash; or fill in manually below</span></label>
           <input type="text" id="spk-search" placeholder="Type a name or organisation..."
             oninput="searchContacts(this.value)" autocomplete="off">
-          <div id="contact-suggestions" style="border:1px solid var(--sand);border-radius:6px;background:white;display:none;max-height:180px;overflow-y:auto;margin-top:4px"></div>
+          <div id="contact-suggestions" style="border:1px solid var(--sand);border-radius:6px;background:var(--surface);display:none;max-height:180px;overflow-y:auto;margin-top:4px"></div>
         </div>
         <div class="field-row">
           <div class="field">

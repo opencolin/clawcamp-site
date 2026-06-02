@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script>(function(){try{var t=localStorage.getItem("claw-theme");if(!t)t=(window.matchMedia&&matchMedia("(prefers-color-scheme:dark)").matches)?"dark":"light";if(t==="dark")document.documentElement.setAttribute("data-theme","dark");}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Chapters — ClawCamp</title>
 <meta name="description" content="Find a ClawCamp chapter near you — or start one in your city.">
@@ -59,7 +60,7 @@
     border-radius: 10px;
     font-family: inherit;
     font-size: 16px;
-    background: white;
+    background: var(--surface);
     color: var(--ink);
     transition: border-color 0.15s;
     outline: none;
@@ -160,7 +161,7 @@
     border-radius: 8px;
     font-family: inherit;
     font-size: 14px;
-    background: white;
+    background: var(--surface);
     color: var(--ink);
     resize: vertical;
     transition: border-color 0.15s;
@@ -202,7 +203,7 @@
   }
   .join-modal-overlay.open { display: flex; }
   .join-modal {
-    background: white;
+    background: var(--surface);
     border-radius: 16px;
     padding: 36px;
     max-width: 480px;

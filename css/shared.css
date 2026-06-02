@@ -12,9 +12,34 @@
   --gold: #b8860b;
   --gold-light: #faf3dc;
   --muted: #7a7267;
+  /* --surface: raised card/input background (white in light mode). Use this
+     instead of a hardcoded `white` so cards follow the theme. */
+  --surface: #ffffff;
+  --shadow-rgb: 15, 14, 11;
+}
+
+/* ---- Dark theme ---- (html[data-theme="dark"], set by the head bootstrap +
+   the nav toggle). Only the neutral palette flips; the rust/moss/gold accents
+   are nudged brighter for contrast on dark. */
+html[data-theme="dark"] {
+  --ink: #f3efe6;
+  --paper: #14130f;
+  --cream: #1d1b16;
+  --sand: #393229;
+  --rust: #e8843a;
+  --rust-light: #3a281b;
+  --moss: #8fbf86;
+  --moss-light: #20281f;
+  --gold: #d8b14a;
+  --gold-light: #2c2614;
+  --muted: #a79e90;
+  --surface: #1b1915;
+  --shadow-rgb: 0, 0, 0;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { color-scheme: light dark; }
 
 body {
   font-family: 'Bricolage Grotesque', sans-serif;
@@ -22,6 +47,32 @@ body {
   color: var(--ink);
   min-height: 100vh;
 }
+
+/* Smooth the theme switch (skip during data-theme bootstrap to avoid a flash). */
+body, nav, .site-footer, .nav-more-dropdown {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* ---- Theme toggle button (injected into the nav by nav.js) ---- */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--sand);
+  background: transparent;
+  color: var(--ink);
+  font-size: 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.theme-toggle:hover { border-color: var(--rust); }
+.dark-hero nav:not(.nav-scrolled) .theme-toggle { color: var(--paper); border-color: rgba(255,255,255,0.35); }
+.dark-hero nav:not(.nav-scrolled) .theme-toggle:hover { border-color: var(--paper); }
 
 /* ---- Nav ---- */
 nav {

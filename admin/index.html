@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script>(function(){try{var t=localStorage.getItem("claw-theme");if(!t)t=(window.matchMedia&&matchMedia("(prefers-color-scheme:dark)").matches)?"dark":"light";if(t==="dark")document.documentElement.setAttribute("data-theme","dark");}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Review Queue — ClawCamp</title>
 <!-- Auth-gated admin tool. Crawlers only ever see the redirect, but keep it
@@ -99,7 +100,7 @@
     border: 1px solid var(--sand);
     border-radius: 12px;
     padding: 24px;
-    background: white;
+    background: var(--surface);
   }
   .adm-card-name {
     font-size: 20px;
@@ -152,7 +153,7 @@
   .adm-btn-approve { background: #2d6a2f; color: white; }
   .adm-btn-approve:hover:not(:disabled) { background: #245526; }
   .adm-btn-reject {
-    background: white;
+    background: var(--surface);
     color: #c62828;
     border: 1px solid #e0bcbc;
   }

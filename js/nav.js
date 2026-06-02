@@ -18,6 +18,7 @@
         <a href="/startups" data-nav>Startup Program</a>\
       </div>\
     </div>\
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode"></button>\
     <a href="/get-involved" class="nav-cta" id="nav-cta-btn">Sign Up / Sign In &rarr;</a>\
   </div>\
   <button class="nav-hamburger" aria-label="Menu">&#9776;</button>\
@@ -76,6 +77,29 @@
     }
   })();
 
+  // ---- Dark / light theme ----
+  // First paint is handled by the inline <head> bootstrap (sets data-theme
+  // before CSS applies, so there's no flash). These helpers handle toggling
+  // and keeping the button icon in sync.
+  function clawCurrentTheme() {
+    return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  }
+  function clawApplyTheme(theme) {
+    if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    else document.documentElement.removeAttribute('data-theme');
+    try { localStorage.setItem('claw-theme', theme); } catch (e) {}
+    var btn = document.getElementById('theme-toggle');
+    if (btn) {
+      // Show the icon for the action the click performs.
+      btn.textContent = theme === 'dark' ? '☀️' : '\u{1F319}';
+      btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+      btn.setAttribute('title', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+    }
+  }
+  window.clawToggleTheme = function () {
+    clawApplyTheme(clawCurrentTheme() === 'dark' ? 'light' : 'dark');
+  };
+
   // Newsletter subscribe (uses contacts table sub_newsletter flag)
   window.clawNewsletter = function(e) {
     e.preventDefault();
@@ -121,6 +145,11 @@
     var footerEl = document.getElementById('site-footer');
     if (navEl) navEl.innerHTML = navHTML;
     if (footerEl) footerEl.innerHTML = footerHTML;
+
+    // Theme toggle: sync the icon to the current theme + wire the click.
+    clawApplyTheme(clawCurrentTheme());
+    var themeBtn = document.getElementById('theme-toggle');
+    if (themeBtn) themeBtn.addEventListener('click', window.clawToggleTheme);
 
     // Active state
     var path = window.location.pathname.replace(/\/index\.html$/, '').replace(/\/$/, '') || '/';
