@@ -30,7 +30,7 @@ Until v1.0.0 ships, treat `contacts` as compromised.
 | 1.0.0 | lockdown-and-versioning | ✅ shipped (8809d72) | `release/1.0.0-lockdown-and-versioning` | `../clawcamp-worktrees/lockdown-and-versioning` | `wf_daa7adcd-bde` |
 | 1.1.0 | chapters-are-real | ✅ shipped (766c70a) | `release/1.1.0-chapters-are-real` | `../clawcamp-worktrees/chapters-are-real` | `wf_a30d2f0f-171` |
 | 1.2.0 | structured-content-and-moderation | ✅ shipped (854f8ae) | `release/1.2.0-structured-content-and-moderation` | `../clawcamp-worktrees/structured-content-and-moderation` | `wf_62e3c1c6-bbf` |
-| 1.3.0 | rsvp-and-identity | 🟡 building | `release/1.3.0-rsvp-and-identity` | `../clawcamp-worktrees/rsvp-and-identity` | — |
+| 1.3.0 | rsvp-and-identity | 🟡 building | `release/1.3.0-rsvp-and-identity` | `../clawcamp-worktrees/rsvp-and-identity` | `wf_5aff7bd6-cc1` |
 | 1.4.0 | rbac-and-captains-console | ⏳ planned | `release/1.4.0-rbac-and-captains-console` | `../clawcamp-worktrees/rbac-and-captains-console` | — |
 | 1.5.0 | recaps-and-living-archive | ⏳ planned | `release/1.5.0-recaps-and-living-archive` | `../clawcamp-worktrees/recaps-and-living-archive` | — |
 | 2.0.0 | self-running-platform | ⏳ planned | `release/2.0.0-self-running-platform` | `../clawcamp-worktrees/self-running-platform` | — |
@@ -84,3 +84,4 @@ git worktree list
 - t8 — v1.2.0 build wf_92207da7-d12 launched (hardcoded paths, worktree repo). Verifying v1.1.0 chapters live.
 - t9 — v1.2.0 build wf_92207da7-d12 FAILED (StructuredOutput overflow on full-file rewrite). Switched to direct-write+manifest pattern (agents Write to worktree, return paths only); relaunched wf_62e3c1c6-bbf. Promoted as canonical TEMPLATE.
 - t10 — v1.2.0 build wf_62e3c1c6-bbf DONE (direct-write pattern worked cleanly; no main leakage, no merge conflict). Committed 854f8ae, merged to master, VERSION 1.2.0. Launching v1.3.0.
+- t11 — v1.2.0 shipped (76aec98). v1.3.0 build wf_5aff7bd6-cc1 launched (direct-write template). Reschedule.
