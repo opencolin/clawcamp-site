@@ -729,6 +729,11 @@
     <button class="filter-btn" onclick="filterEvents('ai_collective', this)">AI Collective</button>
     <button class="filter-btn" onclick="filterEvents('openclaw', this)">OpenClaw</button>
   </div>
+
+  <div class="filter-bar chapter-filter-bar" id="chapter-filter-bar" style="display:none;">
+    <span class="filter-label">Chapter</span>
+    <button class="filter-btn active" data-chapter="all" onclick="setChapterFilter('all', this)">All Chapters</button>
+  </div>
 </div>
 
 <div class="main" id="events-main">
@@ -3153,6 +3158,7 @@ function renderFeaturedEvent(ev) {
   div.dataset.date = ev.event_date;
   div.dataset.city = ev.city;
   div.dataset.source = ev.source || '';
+  div.dataset.chapterId = ev.chapter_id == null ? '' : String(ev.chapter_id);
 
   var left = document.createElement('div');
   left.className = 'featured-left';
@@ -3273,6 +3279,7 @@ function renderEventRow(ev) {
   a.dataset.date = ev.event_date;
   a.dataset.city = ev.city;
   a.dataset.source = ev.source || '';
+  a.dataset.chapterId = ev.chapter_id == null ? '' : String(ev.chapter_id);
 
   // Date column
   var dateDiv = document.createElement('div');
@@ -3439,6 +3446,7 @@ fetch(SUPABASE_URL + '/rest/v1/events?select=*&order=event_date.asc', {
   updateCounts();
   applyFilters();
   window._eventsRendered = true;
+  loadChapters();
   showOaklandFeatured();
   // Populate map dots from live event data
   if (eventsMap) eventsMap.addEventDots(events, ['oakland']);
@@ -3471,6 +3479,7 @@ fetch(SUPABASE_URL + '/rest/v1/events?select=*&order=event_date.asc', {
 
 var currentTimeTab = 'upcoming';
 var currentTypeFilter = 'all';
+var currentChapterFilter = 'all';
 var userLat = null;
 var userLon = null;
 var sortByDistance = false;
@@ -3577,7 +3586,13 @@ function applyFilters() {
     } else {
       typeMatch = type === currentTypeFilter;
     }
-    row.style.display = (timeMatch && typeMatch) ? '' : 'none';
+    var chapterMatch;
+    if (currentChapterFilter === 'all' || currentChapterFilter === '') {
+      chapterMatch = true;
+    } else {
+      chapterMatch = (row.dataset.chapterId || '') === String(currentChapterFilter);
+    }
+    row.style.display = (timeMatch && typeMatch && chapterMatch) ? '' : 'none';
   });
   document.querySelectorAll('.month-section').forEach(function(section) {
     var visible = section.querySelectorAll('.event-row:not([style*="display: none"])');
@@ -3612,6 +3627,7 @@ function buildFeaturedCard(row) {
   card.dataset.type = 'flagship';
   card.dataset.date = evDate;
   card.dataset.city = evCity;
+  card.dataset.chapterId = row.dataset.chapterId || '';
 
   var left = document.createElement('div');
   left.className = 'featured-left';
@@ -3943,10 +3959,67 @@ function switchTimeTab(tab, btn) {
 
 function filterEvents(type, btn) {
   currentTypeFilter = type;
-  document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+  // Only toggle the type filter bar's buttons (leave chapter buttons alone).
+  document.querySelectorAll('.filter-bar:not(.chapter-filter-bar) .filter-btn').forEach(function(b) { b.classList.remove('active'); });
   btn.classList.add('active');
   if (sortByDistance) sortEventsByDistance();
   else applyFilters();
+}
+
+function setChapterFilter(value, btn) {
+  currentChapterFilter = (value == null || value === '') ? 'all' : String(value);
+  document.querySelectorAll('#chapter-filter-bar .filter-btn').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  if (sortByDistance) sortEventsByDistance();
+  else applyFilters();
+}
+
+// Populate the chapter filter bar from the live chapters table (anon read).
+// Depends on the chapters-data-migration slice (chapters table + anon SELECT).
+// Fails silently: if the table isn't readable yet, the bar stays hidden and
+// the page behaves exactly as before.
+function loadChapters() {
+  if (window._chaptersLoaded) return;
+  window._chaptersLoaded = true;
+  fetch(SUPABASE_URL + '/rest/v1/chapters?select=id,slug,name,status&order=name.asc', {
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+    }
+  })
+  .then(function(res) { return res.ok ? res.json() : []; })
+  .then(function(chapters) {
+    if (!Array.isArray(chapters) || chapters.length === 0) return;
+    var bar = document.getElementById('chapter-filter-bar');
+    if (!bar) return;
+    chapters.forEach(function(ch) {
+      if (ch.id == null) return;
+      var btn = document.createElement('button');
+      btn.className = 'filter-btn';
+      btn.dataset.chapter = String(ch.id);
+      if (ch.slug) btn.dataset.slug = String(ch.slug);
+      btn.textContent = ch.name || ch.slug || ('Chapter ' + ch.id);
+      btn.addEventListener('click', function() { setChapterFilter(String(ch.id), btn); });
+      bar.appendChild(btn);
+    });
+    // Reveal the bar now that it has real chapters to choose from.
+    bar.style.display = '';
+
+    // Optional deep-link: ?chapter=<slug> (e.g. arriving from a chapter page)
+    // pre-selects that chapter. Does not affect the ?city= handling above.
+    var chapterParam = new URLSearchParams(window.location.search).get('chapter');
+    if (chapterParam) {
+      var match = chapters.filter(function(c) { return c.slug === chapterParam; })[0];
+      if (match && match.id != null) {
+        var targetBtn = bar.querySelector('.filter-btn[data-chapter="' + String(match.id) + '"]');
+        setChapterFilter(String(match.id), targetBtn);
+      }
+    }
+  })
+  .catch(function(err) {
+    // Chapters table not available yet — leave the bar hidden.
+    console.warn('Chapters filter unavailable:', err);
+  });
 }
 
 // Initialize on load (called after fetch completes above)
