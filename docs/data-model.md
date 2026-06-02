@@ -131,7 +131,7 @@ This collides `title` (a person's job title, populated by the speaker/mentor
 forms) with usernames, and relies on string-prefix matching for uniqueness
 instead of a unique constraint. **Owner:** Dashboard / Identity. **Status:**
 documented debt — to move usernames to a first-class, unique-constrained column
-(or profiles table) in a later release.
+(or profiles table). **Paid down in:** **v1.3.0** (unique-username).
 
 ## `events`
 
@@ -167,4 +167,5 @@ substrings in one text field that must be string-parsed to use.
 > speakers, schedule, sponsors) is serialized into and parsed out of a single
 > free-text `notes` column. **Owner:** Events / Platform. **Status:**
 > documented debt — to be split into typed columns and/or related tables
-> (e.g. `event_speakers`, `event_sponsors`, a `status` enum) in a later release.
+> (e.g. `event_speakers`, `event_sponsors`, a `status` enum). **Paid down in:**
+> **v1.2.0** (structured event content).

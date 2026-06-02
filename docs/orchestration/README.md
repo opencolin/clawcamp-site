@@ -78,3 +78,23 @@ sequence of releases (v1.0 → v2.0). Each release is:
 - Live site: https://claw.camp (Vercel auto-deploys `master`)
 - Supabase project: `mrnccntqmkxjazznejfc` (anon key in page sources; RLS-locked
   for writes to most tables; `contacts` + `events` accept inserts)
+
+
+## ⚠️ Orchestration learnings (avoid these traps)
+
+1. **`args` does NOT reliably propagate through `Workflow({scriptPath, args})`.**
+   The v1.1.0 build launched via the shared `release-builder.js` with
+   `args.planDoc` came back empty, so the decomposer re-audited the already-shipped
+   v1.0.0 files instead of building chapters. **Fix:** hardcode `const planDoc`
+   and `const repo` as literals at the top of the script per release. Use
+   `release-builder-TEMPLATE.js` and edit the two consts. (Run wf_5f6f040c-45d
+   was the misfire; wf_a30d2f0f-171 is the corrected v1.1.0 build.)
+2. **Point `repo` at the release WORKTREE, not the main checkout.** The builder's
+   producer agents write to the `repo` path directly (in addition to returning
+   structured output), so targeting the worktree keeps work on the right branch
+   instead of leaking onto `master`.
+3. **Sync the release worktree to `master` before building** so it has all prior
+   shipped releases as its foundation (`cd <worktree> && git merge master`).
+4. **DB migrations are git-only.** The anon key cannot run DDL; every migration
+   under `supabase/migrations/` needs an admin to apply it server-side. The
+   matching `scripts/*-probe.sh` is the red→green gate proving it landed.

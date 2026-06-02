@@ -28,7 +28,7 @@ Until v1.0.0 ships, treat `contacts` as compromised.
 | Version | Slug | State | Branch | Worktree | Workflow runId |
 |---------|------|-------|--------|----------|----------------|
 | 1.0.0 | lockdown-and-versioning | ✅ shipped (8809d72) | `release/1.0.0-lockdown-and-versioning` | `../clawcamp-worktrees/lockdown-and-versioning` | `wf_daa7adcd-bde` |
-| 1.1.0 | chapters-are-real | 🟡 building | `release/1.1.0-chapters-are-real` | `../clawcamp-worktrees/chapters-are-real` | `wf_5f6f040c-45d` |
+| 1.1.0 | chapters-are-real | 🟡 building | `release/1.1.0-chapters-are-real` | `../clawcamp-worktrees/chapters-are-real` | `wf_a30d2f0f-171` (wf_5f6f040c-45d misfired: args bug) |
 | 1.2.0 | structured-content-and-moderation | ⏳ planned | `release/1.2.0-structured-content-and-moderation` | `../clawcamp-worktrees/structured-content-and-moderation` | — |
 | 1.3.0 | rsvp-and-identity | ⏳ planned | `release/1.3.0-rsvp-and-identity` | `../clawcamp-worktrees/rsvp-and-identity` | — |
 | 1.4.0 | rbac-and-captains-console | ⏳ planned | `release/1.4.0-rbac-and-captains-console` | `../clawcamp-worktrees/rbac-and-captains-console` | — |
@@ -79,3 +79,4 @@ git worktree list
 - t5 — v1.1.0 build wf_5f6f040c-45d launched, repo arg pointed at the v1.1.0 worktree (lands on the right branch directly). Rescheduled tick.
 - t5b — User rename: 'Other Events' → 'Online Events' on /chapters (master, deployed). NOTE for v1.1.0 apply: when chapters becomes data-driven, seed the catch-all row as 'Online Events' (slug online-events), not 'Other Events'.
 - t5c — User rename: ClawCamp SF, CA → ClawCamp San Francisco (master, deployed). NOTE for v1.1.0 chapters seed: name the SF row "ClawCamp San Francisco" (slug sf / san-francisco).
+- t6 — v1.1.0 build wf_5f6f040c-45d MISFIRED (args.planDoc empty via scriptPath → re-audited v1.0.0). Root-caused, documented in README. Reset worktree, relaunched as wf_a30d2f0f-171 with hardcoded planDoc/repo. Saved release-builder-TEMPLATE.js.
