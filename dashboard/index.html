@@ -713,6 +713,10 @@
   var SUPABASE_URL = 'https://mrnccntqmkxjazznejfc.supabase.co';
   var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ybmNjbnRxbWt4amF6em5lamZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMDA3NTksImV4cCI6MjA5MDc3Njc1OX0.T6oFTtYiFTsx6ojuogpZFXAS7tN5-dPzwvmY5V2xFGI';
   var dashEmail = '';
+  // Auth uuid of the logged-in user (== profiles primary key). Cached on
+  // showDashboard() so the username-availability check can recognize a handle
+  // the current user already owns without an extra getSession() per keystroke.
+  var _dashUid = '';
 
   // Session-bound fetch to the contacts table. Since the v1.0.0 lockdown
   // (supabase/migrations/0001_baseline.sql) REVOKEs anon SELECT/UPDATE on
@@ -738,26 +742,70 @@
   }
 
   // ---------- Profile ----------
-  function loadProfile(email) {
-    // Reads own contact row — needs the user's session token now that anon
-    // SELECT on contacts is revoked (RLS returns only the caller's own row).
-    dashAuthFetch(SUPABASE_URL + '/rest/v1/contacts?email=eq.' + encodeURIComponent(email) +
-      '&select=name,bio,linkedin,website,title&limit=1', {
+  // v1.3 identity: profile identity fields now live in the profiles table
+  // (keyed by the auth uuid), not contacts. We read profiles by id; if the
+  // table is absent (migration 0005 not applied) or has no row yet, we fall
+  // back to the user's contacts display name / initials so the panel still
+  // renders and the user can save to create their profile.
+  function loadProfile(uid, email) {
+    if (!uid) { updateAvatarInitials(email); return; }
+    dashAuthFetch(SUPABASE_URL + '/rest/v1/profiles?id=eq.' + encodeURIComponent(uid) +
+      '&select=username,display_name,bio,links,photo_path&limit=1', {
       headers: {}
-    }).then(function(r){ return r ? r.json() : []; })
+    }).then(function(r){
+      if (!r) return null;
+      if (r.status === 404) return null; // profiles table not applied yet
+      return r.json();
+    })
     .then(function(rows) {
-      if (!rows.length) return;
+      if (rows === null || !rows.length) { loadProfileFallback(email); return; }
       var row = rows[0];
-      if (row.name) document.getElementById('prof-name').value = row.name;
+      if (row.display_name) document.getElementById('prof-name').value = row.display_name;
+      if (row.username) document.getElementById('prof-username').value = row.username;
       if (row.bio) {
         document.getElementById('prof-bio').value = row.bio;
         document.getElementById('bio-count').textContent = row.bio.length;
       }
-      if (row.linkedin) document.getElementById('prof-linkedin').value = row.linkedin;
-      if (row.website) document.getElementById('prof-website').value = row.website;
-      // Set avatar initials or photo
-      updateAvatarInitials(row.name || email);
-    }).catch(function(){});
+      var links = row.links || {};
+      if (links.linkedin) document.getElementById('prof-linkedin').value = links.linkedin;
+      if (links.website) document.getElementById('prof-website').value = links.website;
+      if (row.photo_path) {
+        renderAvatarPhoto(row.photo_path);
+      } else {
+        updateAvatarInitials(row.display_name || email);
+      }
+    }).catch(function(){ loadProfileFallback(email); });
+  }
+
+  // Graceful fallback when profiles is absent/empty: pull only the display name
+  // from the user's own contacts row (still session-bound, RLS-confined) so the
+  // avatar/initials look right. contacts is otherwise strictly CRM now.
+  function loadProfileFallback(email) {
+    dashAuthFetch(SUPABASE_URL + '/rest/v1/contacts?email=eq.' + encodeURIComponent(email) +
+      '&select=name&limit=1', { headers: {} })
+    .then(function(r){ return r ? r.json() : []; })
+    .then(function(rows) {
+      var name = (rows.length && rows[0].name) || '';
+      updateAvatarInitials(name || email);
+    }).catch(function(){ updateAvatarInitials(email); });
+  }
+
+  // Render the avatar from a Storage object path via the public 'media' bucket.
+  // Built with createElement + .src (never innerHTML); the URL is derived
+  // client-side from a trusted bucket path, not injected as markup.
+  function renderAvatarPhoto(photoPath) {
+    var preview = document.getElementById('profile-avatar-preview');
+    if (!preview) return;
+    try {
+      var pub = clawAuth.client.storage.from('media').getPublicUrl(photoPath);
+      var url = pub && pub.data && pub.data.publicUrl;
+      if (!url) return;
+      var img = document.createElement('img');
+      img.src = url;
+      img.alt = 'Profile photo';
+      preview.textContent = '';
+      preview.appendChild(img);
+    } catch (e) { /* bucket absent / SDK issue — keep initials */ }
   }
 
   function updateAvatarInitials(nameOrEmail) {
@@ -768,6 +816,27 @@
     el.textContent = initials || '?';
   }
 
+  // Maps the file's MIME type to a file extension. Returns '' for unsupported
+  // types so we can bail before hitting Storage (the bucket also enforces
+  // allowed_mime_types server-side as the real gate).
+  function extForType(type) {
+    var map = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp' };
+    return map[type] || '';
+  }
+
+  // Small inline status for the photo upload. Reuses the profile-save-status
+  // node, written via textContent only (never innerHTML).
+  function setPhotoStatus(msg, isError) {
+    var statusEl = document.getElementById('profile-save-status');
+    if (!statusEl) return;
+    statusEl.textContent = msg;
+    statusEl.style.color = isError ? '#c62828' : '#2d4a2f';
+    if (msg) setTimeout(function(){
+      // Only clear if it's still our message (don't stomp a later save status).
+      if (statusEl.textContent === msg) statusEl.textContent = '';
+    }, 3000);
+  }
+
   window.handlePhotoSelect = function(input) {
     var file = input.files && input.files[0];
     if (!file) return;
@@ -775,6 +844,7 @@
       alert('Photo must be under 5MB.');
       return;
     }
+    // Instant local preview (good UX) — happens regardless of upload outcome.
     var reader = new FileReader();
     reader.onload = function(e) {
       var preview = document.getElementById('profile-avatar-preview');
@@ -785,6 +855,44 @@
       preview.appendChild(img);
     };
     reader.readAsDataURL(file);
+
+    // Real upload to the 'media' Storage bucket. The first path folder MUST be
+    // the user's uid so the media_insert_own RLS policy
+    // ((storage.foldername(name))[1] = auth.uid()::text) permits it — which is
+    // also why a cross-user upload is impossible from this client.
+    var ext = extForType(file.type);
+    if (!ext) { setPhotoStatus('Unsupported image type.', true); return; }
+    setPhotoStatus('Uploading photo...', false);
+    clawAuth.getSession().then(function(res) {
+      var s = res && res.data && res.data.session;
+      if (!s) { setPhotoStatus('Sign in to upload a photo.', true); return; }
+      var uid = s.user.id;
+      var path = uid + '/avatar-' + Date.now() + '.' + ext;
+      return clawAuth.client.storage.from('media').upload(path, file, {
+        upsert: true,
+        contentType: file.type
+      }).then(function(up) {
+        // Bucket absent, oversized, or wrong-type -> server-side rejection.
+        // Surface a friendly error and KEEP the local preview.
+        if (!up || up.error) {
+          setPhotoStatus('Couldn’t upload photo. Try again.', true);
+          return;
+        }
+        // Persist the object path to profiles.photo_path (upsert on id).
+        return upsertProfile({ id: uid, photo_path: path }).then(function(r) {
+          if (r && r.ok) {
+            setPhotoStatus('Photo uploaded ✓', false);
+          } else if (r && r.status === 404) {
+            // Uploaded fine, but profiles table not applied yet — soft note.
+            setPhotoStatus('Photo uploaded (save your profile to keep it).', false);
+          } else {
+            setPhotoStatus('Photo uploaded, but couldn’t save it to your profile.', true);
+          }
+        });
+      });
+    }).catch(function() {
+      setPhotoStatus('Couldn’t upload photo. Try again.', true);
+    });
   };
 
   var _usernameTimer;
@@ -797,18 +905,24 @@
     avail.textContent = '...';
     avail.className = 'username-avail';
     _usernameTimer = setTimeout(function() {
-      // Check if username is taken (stored in contacts.title field as username: prefix).
-      // contacts SELECT is no longer anon-readable after the lockdown, so this
-      // availability check must run with the user's session token too. Under
-      // the contacts_select_own RLS policy a logged-in user only ever sees
-      // their OWN row, so a "taken" handle on someone else's row reads back as
-      // available here — accepted as a known limitation of the title='username:'
-      // hack until a proper unique-username table lands (roadmap v1.3 identity).
-      dashAuthFetch(SUPABASE_URL + '/rest/v1/contacts?title=eq.username:' + encodeURIComponent(val) + '&select=id&limit=1', {
+      // v1.3 identity: the title='username:' hack is gone. We now query the real
+      // profiles table, which has a public-SELECT policy and a UNIQUE citext
+      // username, so this existence check sees ALL users' handles (not just the
+      // caller's own row) — "Taken" is finally correct and race-safe. RLS still
+      // confines writes; only the SELECT is public here.
+      dashAuthFetch(SUPABASE_URL + '/rest/v1/profiles?username=eq.' + encodeURIComponent(val) + '&select=id&limit=1', {
         headers: {}
-      }).then(function(r){ return r ? r.json() : []; })
+      }).then(function(r){
+        if (!r) { avail.textContent = ''; return null; }
+        // profiles table not applied yet (migration 0005) -> degrade gracefully.
+        if (r.status === 404) { avail.textContent = ''; return null; }
+        return r.json();
+      })
       .then(function(rows) {
-        if (rows.length === 0) {
+        if (rows === null) return;
+        // A handle the CURRENT user already owns must read as available.
+        var ownsIt = rows.length && _dashUid && rows[0].id === _dashUid;
+        if (rows.length === 0 || ownsIt) {
           avail.textContent = '✓ Available';
           avail.className = 'username-avail ok';
         } else {
@@ -819,8 +933,24 @@
     }, 400);
   };
 
+  // Upsert a profiles row keyed by the auth uuid (the PK). resolution=merge-
+  // duplicates makes the POST an upsert on id; the profiles_insert_own /
+  // profiles_update_own RLS policies enforce id = auth.uid() in their WITH
+  // CHECK, so a caller can only ever write their OWN row. Resolves to the raw
+  // fetch Response (or null if no session) so callers can branch on
+  // r.ok / r.status (e.g. 404 = table absent, 409 = duplicate username).
+  function upsertProfile(profilesBody) {
+    return dashAuthFetch(SUPABASE_URL + '/rest/v1/profiles', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify(profilesBody)
+    });
+  }
+
   window.saveProfile = function() {
-    if (!dashEmail) return;
     var name = document.getElementById('prof-name').value.trim();
     var bio = document.getElementById('prof-bio').value.trim();
     var linkedin = document.getElementById('prof-linkedin').value.trim();
@@ -832,46 +962,57 @@
     btn.textContent = 'Saving...';
     statusEl.textContent = '';
 
-    // Auto-prefix website
-    if (website && !website.startsWith('http')) website = 'https://' + website;
-
-    var body = { bio: bio || null, linkedin: linkedin || null, website: website || null };
-    if (name) body.name = name;
-    if (username) body.title = 'username:' + username; // store username in title field with prefix
-
-    // Session-bound PATCH: the Authorization header carries the logged-in
-    // user's JWT (not the anon key), so the contacts_update_own RLS policy
-    // only lets the caller update their OWN row. The ?email=eq. filter is now
-    // belt-and-suspenders — RLS, not the query string, enforces ownership.
-    dashAuthFetch(SUPABASE_URL + '/rest/v1/contacts?email=eq.' + encodeURIComponent(dashEmail), {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify(body)
-    }).then(function(r) {
-      if (r && r.ok) {
-        statusEl.textContent = 'Profile saved ✓';
-        statusEl.style.color = '#2d4a2f';
-        if (name) {
-          var firstName = name.split(' ')[0];
-          document.getElementById('dash-name').textContent = firstName;
-          updateAvatarInitials(name);
-        }
-      } else {
-        statusEl.textContent = 'Error saving. Try again.';
-        statusEl.style.color = '#c62828';
-      }
-      btn.disabled = false;
-      btn.textContent = 'Save Profile';
-      setTimeout(function(){ statusEl.textContent = ''; }, 3000);
-    }).catch(function() {
-      statusEl.textContent = 'Error saving. Try again.';
+    function fail(msg) {
+      statusEl.textContent = msg || 'Error saving. Try again.';
       statusEl.style.color = '#c62828';
       btn.disabled = false;
       btn.textContent = 'Save Profile';
-    });
+    }
+
+    // Auto-prefix website
+    if (website && !website.startsWith('http')) website = 'https://' + website;
+
+    // v1.3 identity: profile fields now upsert into the profiles table keyed by
+    // the auth uuid. contacts is strictly CRM/lead-capture now — we no longer
+    // write username/title (or any identity field) to it. Email PREFERENCES
+    // (savePref) still live on contacts and are untouched.
+    clawAuth.getSession().then(function(res) {
+      var s = res && res.data && res.data.session;
+      if (!s) { fail('Sign in to save your profile.'); return; }
+      var uid = s.user.id;
+      var profilesBody = {
+        id: uid,
+        username: username || null,
+        display_name: name || null,
+        bio: bio || null,
+        links: { linkedin: linkedin || null, website: website || null }
+      };
+      return upsertProfile(profilesBody).then(function(r) {
+        if (r && r.ok) {
+          statusEl.textContent = 'Profile saved ✓';
+          statusEl.style.color = '#2d4a2f';
+          if (name) {
+            var firstName = name.split(' ')[0];
+            document.getElementById('dash-name').textContent = firstName;
+            updateAvatarInitials(name);
+          }
+          btn.disabled = false;
+          btn.textContent = 'Save Profile';
+          setTimeout(function(){
+            if (statusEl.textContent === 'Profile saved ✓') statusEl.textContent = '';
+          }, 3000);
+        } else if (r && r.status === 409) {
+          // UNIQUE-username conflict — the handle belongs to someone else.
+          fail('That handle is taken. Pick another.');
+        } else if (r && r.status === 404) {
+          // profiles table not applied yet (migration 0005) — keep the form
+          // usable rather than hard-failing the panel.
+          fail('Profiles aren’t available yet. Your changes weren’t saved.');
+        } else {
+          fail();
+        }
+      });
+    }).catch(function() { fail(); });
   };
 
   function loadPrefs(email) {
@@ -920,16 +1061,17 @@
     });
   };
 
-  function showDashboard(email, name) {
+  function showDashboard(email, name, uid) {
     loadingEl.style.display = 'none';
     contentEl.style.display = '';
     dashEmail = email;
+    _dashUid = uid || '';
     var firstName = name ? name.split(' ')[0] : email.split('@')[0];
     document.getElementById('dash-name').textContent = firstName;
     document.getElementById('dash-email').textContent = email;
     updateAvatarInitials(name || email);
     loadPrefs(email);
-    loadProfile(email);
+    loadProfile(uid, email);
   }
 
   // Sign out
@@ -949,7 +1091,7 @@
       var user = session.user;
       var email = user.email || '';
       var name = (user.user_metadata && user.user_metadata.name) || '';
-      showDashboard(email, name);
+      showDashboard(email, name, user.id);
     }
   });
 
@@ -959,7 +1101,7 @@
       var user = result.data.session.user;
       var email = user.email || '';
       var name = (user.user_metadata && user.user_metadata.name) || '';
-      showDashboard(email, name);
+      showDashboard(email, name, user.id);
     } else if (!window.location.hash) {
       // No session and no hash fragment — not authenticated
       showError('Please sign in to access your dashboard.');
