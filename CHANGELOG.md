@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.0 — Real Roles + the Captain's Console
+
+- memberships table + SECURITY DEFINER role helpers (server-side RBAC, no
+  self-promote); events/chapters UPDATE policies for admins + chapter captains;
+  chapter_follows table + submit-follow Edge Function (join modal writes a real
+  follow); dashboard My Chapters + role badge + follow feed; Captain's Console
+  (RLS-gated) with chapter editing + RSVP roster + CSV export.
+
 ## 1.3.0 — On-Site RSVP, Real Profiles, and Storage
 
 - rsvps table (migration 0004) + a submit-rsvp service-role Edge Function with a
