@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.5.0 — Recaps + Evergreen SEO
+
+- recap columns on events (recap_url + recap_photos_url jsonb path array +
+  recap_headline/recap_body) and per-chapter media-bucket RLS (migration 0008):
+  a captain may write recap photos under a `chapter-<id>/` folder in the shared
+  'media' bucket; cross-chapter upload is rejected server-side. Recap writes
+  reuse the existing events UPDATE gate (no new write policy); recap reads ride
+  the existing approved-only anon gate, so unapproved recaps never leak.
+- Captain recap composer (RLS-gated) to attach a recording/slides link,
+  takeaways, and a photo gallery to a past event.
+- Recap section on the event detail page replacing the "this event has ended"
+  banner; events without a recap keep the ended banner (graceful fallback).
+- Past Events archive tab + a momentum stat ("X events hosted, Y total
+  attendees") from an extended chapter_stats view (additive columns
+  events_hosted + total_attendees, the latter a real DB RSVP count read without
+  exposing the sealed roster).
+- Recap JSON-LD (EventCompleted) + sitemap coverage for past events with a
+  recap, and a gated recap email to RSVPed attendees.
+
 ## 1.4.0 — Real Roles + the Captain's Console
 
 - memberships table + SECURITY DEFINER role helpers (server-side RBAC, no

@@ -356,6 +356,58 @@
 .cc-console .cc-cell-time { font-family: 'DM Mono', monospace; color: var(--muted); white-space: nowrap; }
 .cc-console .cc-row-cancelled td { color: var(--muted); text-decoration: line-through; }
 
+/* ---- Recap composer (collapsible) — only on past events ---- */
+.cc-console .cc-recap-wrap {
+  margin-top: 14px;
+  border-top: 1px dashed var(--sand);
+  padding-top: 12px;
+}
+.cc-console .cc-recap-toggle {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--rust);
+  cursor: pointer;
+}
+.cc-console .cc-recap-toggle:hover { text-decoration: underline; }
+.cc-console .cc-recap-body { margin-top: 12px; }
+.cc-console .cc-recap-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 560px;
+}
+.cc-console .cc-recap-file {
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink);
+}
+.cc-console .cc-recap-file::file-selector-button {
+  border: 1px solid var(--sand);
+  border-radius: 20px;
+  padding: 7px 16px;
+  margin-right: 10px;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--ink);
+  background: white;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cc-console .cc-recap-file::file-selector-button:hover {
+  border-color: var(--ink);
+  background: var(--cream);
+}
+.cc-console .cc-recap-photocount {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
 @media (max-width: 768px) {
   .cc-console { padding-left: 20px; padding-right: 20px; }
   .cc-console .cc-event-head { flex-direction: column; align-items: flex-start; gap: 6px; }

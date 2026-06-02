@@ -93,6 +93,28 @@
     });
   }
 
+  // Today's date as a YYYY-MM-DD string, computed exactly like the public event
+  // detail page (events/detail/index.html) so "past" means the same thing in
+  // both places. A string compare against event_date (also YYYY-MM-DD) is safe.
+  function todayStr() {
+    var t = new Date();
+    return t.getFullYear() + '-' +
+      String(t.getMonth() + 1).padStart(2, '0') + '-' +
+      String(t.getDate()).padStart(2, '0');
+  }
+
+  function isPastEvent(event) {
+    return !!(event && event.event_date && event.event_date < todayStr());
+  }
+
+  // MIME -> file extension for recap photo uploads. Mirrors the dashboard's
+  // extForType map (the 'media' bucket also enforces mime + size server-side as
+  // the real gate); an unsupported type returns '' so we can bail before Storage.
+  function extForType(type) {
+    var map = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp' };
+    return map[type] || '';
+  }
+
   // Human label for an event status (badge text).
   function statusLabel(status) {
     switch (status) {
@@ -342,7 +364,7 @@
   // an attempt on another chapter's event is rejected by RLS (headline exit
   // criterion). Every field is rendered via textContent (XSS invariant).
   // ---------------------------------------------------------------------------
-  function renderEventCard(event, onChanged) {
+  function renderEventCard(event, chapter, onChanged) {
     var card = el('div', 'cc-event-card');
     card.setAttribute('data-event-id', String(event.id));
 
@@ -453,7 +475,211 @@
     rosterWrap.appendChild(rosterBody);
     card.appendChild(rosterWrap);
 
+    // Recap composer (collapsible) — only for PAST events. Upcoming events get
+    // nothing new here. Mirrors the roster toggle pattern above.
+    if (isPastEvent(event)) {
+      card.appendChild(renderRecapComposer(event, chapter, onChanged));
+    }
+
     return card;
+  }
+
+  // ---------------------------------------------------------------------------
+  // FEATURE 4 — Recap composer (authoring counterpart to the public detail-page
+  // recap section). Lets a captain attach uploaded photos, a recording/slides
+  // URL, a headline, and takeaways to a PAST event in THEIR chapter.
+  //
+  // DEPENDS ON migration 0008 (recap_* columns + a per-chapter storage INSERT
+  // policy) but DEGRADES GRACEFULLY when absent: the SELECT falls back (no
+  // prefill), an upload against a missing bucket/policy surfaces an inline
+  // error and the rest of the composer stays usable, and a SAVE PATCH against
+  // missing columns just shows the friendly access error.
+  //
+  // SECURITY: identical posture to the rest of this file. The AUTHORITATIVE
+  // gate is RLS — the per-chapter Storage INSERT policy (0008) authorizes the
+  // upload ONLY for a captain of THIS chapter (a cross-chapter path is rejected
+  // server-side), and events_update_admin_or_captain (0006) authorizes the
+  // PATCH only for the captain of the event's chapter. Every field is rendered
+  // via el()/textContent — NEVER innerHTML (STORED-XSS INVARIANT).
+  // ---------------------------------------------------------------------------
+  function renderRecapComposer(event, chapter, onChanged) {
+    // Existing recap photo PATHS already on the event (from the widened SELECT).
+    // We MERGE newly-uploaded paths into this so re-saving never drops photos.
+    var existingPhotos = Array.isArray(event.recap_photos_url) ? event.recap_photos_url.slice() : [];
+
+    var wrap = el('div', 'cc-recap-wrap');
+    var toggle = el('button', 'cc-recap-toggle', '▸ Recap');
+    var body = el('div', 'cc-recap-body');
+    body.style.display = 'none';
+    toggle.addEventListener('click', function () {
+      var open = body.style.display !== 'none';
+      body.style.display = open ? 'none' : '';
+      toggle.textContent = (open ? '▸' : '▾') + ' Recap';
+    });
+    wrap.appendChild(toggle);
+    wrap.appendChild(body);
+
+    var form = el('div', 'cc-recap-form');
+
+    // --- Recording / slides URL ---
+    var urlField = el('div', 'cc-field');
+    urlField.appendChild(el('label', 'cc-label', 'Recording / slides URL'));
+    var urlInput = el('input', 'cc-input');
+    urlInput.type = 'text';
+    urlInput.placeholder = 'https://…';
+    urlInput.value = event.recap_url || '';
+    urlField.appendChild(urlInput);
+    form.appendChild(urlField);
+
+    // --- Headline ---
+    var headlineField = el('div', 'cc-field');
+    headlineField.appendChild(el('label', 'cc-label', 'Headline'));
+    var headlineInput = el('input', 'cc-input');
+    headlineInput.type = 'text';
+    headlineInput.placeholder = 'A one-line recap headline.';
+    headlineInput.value = event.recap_headline || '';
+    headlineField.appendChild(headlineInput);
+    form.appendChild(headlineField);
+
+    // --- Body / takeaways ---
+    var bodyField = el('div', 'cc-field');
+    bodyField.appendChild(el('label', 'cc-label', 'Takeaways'));
+    var bodyInput = el('textarea', 'cc-input cc-textarea');
+    bodyInput.rows = 4;
+    bodyInput.placeholder = 'Headline takeaways from the event.';
+    bodyInput.value = event.recap_body || '';
+    bodyField.appendChild(bodyInput);
+    form.appendChild(bodyField);
+
+    // --- Photos (multiple) ---
+    var photoField = el('div', 'cc-field');
+    photoField.appendChild(el('label', 'cc-label', 'Photos'));
+    var photoInput = el('input', 'cc-recap-file');
+    photoInput.type = 'file';
+    photoInput.accept = 'image/*';
+    photoInput.multiple = true;
+    photoField.appendChild(photoInput);
+    // A small count of photos already attached (rendered as plain text).
+    var photoCount = el('div', 'cc-recap-photocount');
+    function refreshPhotoCount() {
+      var n = existingPhotos.length;
+      photoCount.textContent = n
+        ? (n + (n === 1 ? ' photo attached' : ' photos attached'))
+        : 'No photos attached yet.';
+    }
+    refreshPhotoCount();
+    photoField.appendChild(photoCount);
+    form.appendChild(photoField);
+
+    // --- Save row + status ---
+    var saveRow = el('div', 'cc-save-row');
+    var saveBtn = el('button', 'cc-btn cc-btn-primary', 'Save recap');
+    var statusEl = el('span', 'cc-status');
+    saveRow.appendChild(saveBtn);
+    saveRow.appendChild(statusEl);
+    form.appendChild(saveRow);
+
+    function setStatus(msg, kind) {
+      statusEl.textContent = msg || '';
+      statusEl.style.color = kind === 'error' ? '#c62828'
+        : kind === 'ok' ? '#2d4a2f' : 'var(--muted)';
+    }
+
+    // Upload each selected file to the 'media' bucket under the CHAPTER folder
+    // (NOT the user folder). The 0008 per-chapter INSERT policy authorizes this
+    // ONLY for a captain of THIS chapter — a cross-chapter upload is rejected
+    // server-side, so we never rely on the client for that boundary. Resolves
+    // to an array of uploaded object PATHS (not public URLs). Bails on an
+    // unsupported MIME before hitting Storage; enforces the 5MB client check
+    // (the bucket also enforces size + mime server-side as the real gate).
+    function uploadPhotos(files) {
+      var client = window.clawAuth && window.clawAuth.client;
+      if (!client || !client.storage) {
+        return Promise.reject(new Error('storage-unavailable'));
+      }
+      var uploads = [];
+      for (var i = 0; i < files.length; i++) {
+        var file = files[i];
+        if (file.size > 5 * 1024 * 1024) {
+          return Promise.reject(new Error('too-large'));
+        }
+        var ext = extForType(file.type);
+        if (!ext) {
+          return Promise.reject(new Error('bad-type'));
+        }
+        var path = 'chapter-' + chapter.id + '/recap-' + event.id + '-' + Date.now() + '-' + i + '.' + ext;
+        uploads.push(
+          client.storage.from('media').upload(path, file, { contentType: file.type })
+            .then(function (boundPath) {
+              return function (up) {
+                if (!up || up.error) throw (up && up.error) || new Error('upload-failed');
+                return boundPath;
+              };
+            }(path))
+        );
+      }
+      return Promise.all(uploads);
+    }
+
+    saveBtn.addEventListener('click', function () {
+      saveBtn.disabled = true;
+      var files = (photoInput.files && photoInput.files.length) ? photoInput.files : null;
+
+      var ready = files
+        ? (setStatus('Uploading photos…', null), uploadPhotos(files))
+        : Promise.resolve([]);
+
+      ready.then(function (newPaths) {
+        // Merge newly-uploaded paths with any already on the event so a
+        // re-save never drops existing photos.
+        var photos = existingPhotos.concat(newPaths || []);
+        setStatus('Saving…', null);
+        // Same PATCH shape patchStatus() uses (Content-Type + return=minimal).
+        // events_update_admin_or_captain (0006) gates this to the captain of
+        // the event's chapter.
+        return authFetch(SUPABASE_URL + '/rest/v1/events?id=eq.' + encodeURIComponent(event.id), {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+          body: JSON.stringify({
+            recap_url: urlInput.value.trim() || null,
+            recap_headline: headlineInput.value.trim() || null,
+            recap_body: bodyInput.value.trim() || null,
+            recap_photos_url: photos
+          })
+        }).then(function (r) {
+          saveBtn.disabled = false;
+          if (r && r.ok) {
+            // Reflect saved values back into our in-memory event + UI so a
+            // re-save keeps everything, then refresh like the other actions.
+            existingPhotos = photos;
+            event.recap_url = urlInput.value.trim() || null;
+            event.recap_headline = headlineInput.value.trim() || null;
+            event.recap_body = bodyInput.value.trim() || null;
+            event.recap_photos_url = photos;
+            photoInput.value = '';
+            refreshPhotoCount();
+            setStatus('Recap saved ✓', 'ok');
+            if (typeof onChanged === 'function') onChanged();
+          } else {
+            setStatus('Couldn’t save recap — you may not have access to this event.', 'error');
+          }
+        });
+      }).catch(function (err) {
+        saveBtn.disabled = false;
+        var msg = err && err.message;
+        if (msg === 'too-large') {
+          setStatus('Each photo must be under 5MB.', 'error');
+        } else if (msg === 'bad-type') {
+          setStatus('Unsupported image type. Use JPG, PNG, GIF, or WebP.', 'error');
+        } else {
+          // Bucket absent / 0008 not applied / network — keep composer usable.
+          setStatus('Couldn’t upload photos. Try again.', 'error');
+        }
+      });
+    });
+
+    body.appendChild(form);
+    return wrap;
   }
 
   // Load + group this chapter's events by status. events_select_authenticated
@@ -466,15 +692,31 @@
     section.appendChild(listEl);
     mount.appendChild(section);
 
+    // Base SELECT (always valid) + the recap columns (migration 0008). If 0008
+    // isn't applied, PostgREST 400s on the unknown columns, so we transparently
+    // retry with the base SELECT — the composer then renders with no prefill but
+    // still works (GRACEFUL FALLBACK). recap_photos_url is a text[] of object
+    // PATHS in the 'media' bucket (NOT public URLs).
+    var BASE_SELECT = 'id,name,event_date,city,description,link,status,capacity';
+    var RECAP_SELECT = BASE_SELECT + ',recap_url,recap_photos_url,recap_headline,recap_body';
+
+    function fetchEvents(select) {
+      return authFetch(SUPABASE_URL + '/rest/v1/events?select=' + select +
+        '&chapter_id=eq.' + encodeURIComponent(chapter.id) + '&order=event_date.desc', {
+        headers: {}
+      });
+    }
+
     function load() {
       listEl.textContent = '';
       listEl.appendChild(el('div', 'cc-roster-loading', 'Loading events…'));
-      authFetch(SUPABASE_URL + '/rest/v1/events?select=id,name,event_date,city,description,link,status,capacity' +
-        '&chapter_id=eq.' + encodeURIComponent(chapter.id) + '&order=event_date.desc', {
-        headers: {}
-      }).then(function (r) {
-        if (!r || !r.ok) return null;
-        return r.json();
+      fetchEvents(RECAP_SELECT).then(function (r) {
+        if (r && r.ok) return r.json();
+        // 0008 not applied (400 on unknown recap columns) -> retry base SELECT.
+        return fetchEvents(BASE_SELECT).then(function (r2) {
+          if (!r2 || !r2.ok) return null;
+          return r2.json();
+        });
       }).then(function (rows) {
         listEl.textContent = '';
         if (!rows || !rows.length) {
@@ -513,7 +755,7 @@
       heading.appendChild(el('span', 'cc-group-count', String(evs.length)));
       group.appendChild(heading);
       evs.forEach(function (ev) {
-        group.appendChild(renderEventCard(ev, load));
+        group.appendChild(renderEventCard(ev, chapter, load));
       });
       listEl.appendChild(group);
     }

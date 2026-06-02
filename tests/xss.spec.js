@@ -33,6 +33,12 @@ const { test, expect } = require('@playwright/test');
 // The canonical stored-XSS payload from the plan.
 const PAYLOAD = '<img src=x onerror=alert(1)>';
 const FAKE_ID = 999999;
+// A separate id for the past-event-with-recap fixture so its route stub never
+// collides with the upcoming-event fixture above.
+const FAKE_RECAP_ID = 999998;
+// A javascript:-scheme href payload — the recap render must NEVER turn this
+// into a live anchor (it is only ever a live <a> when it starts http(s)://).
+const JS_HREF = 'javascript:alert(document.domain)';
 
 // A minimal events row shaped like the real /rest/v1/events response, with the
 // payload planted in every user-controlled string field.
@@ -54,6 +60,39 @@ const POISONED_ROW = {
   is_featured: false,
   source: 'submitted:attacker@example.com',
   tags: PAYLOAD
+};
+
+// A PAST event (event_date well in the past so the detail page's `isPast` is
+// true) carrying a LIVING RECAP whose every recap field is hostile. The recap
+// section (v1.5) renders recap_headline / recap_body via textContent and only
+// turns recap_url into a live anchor when it is an http(s):// URL — so a
+// javascript: scheme must stay inert text and the <img onerror> payload must
+// never create a live <img>. recap_photos_url carries a payload-laden path too;
+// the gallery builds <img> elements from media-bucket paths, so the attack
+// string must NOT survive as a live onerror handler there either.
+const POISONED_RECAP_ROW = {
+  id: FAKE_RECAP_ID,
+  created_at: '2020-01-01T00:00:00Z',
+  name: PAYLOAD,
+  event_date: '2020-01-01', // firmly in the past => recap section path
+  city: PAYLOAD,
+  event_type: 'in-person',
+  description: PAYLOAD,
+  location: PAYLOAD,
+  venue_name: PAYLOAD,
+  time_range: '10:00 – 12:00',
+  link: 'https://example.com/' + encodeURIComponent(PAYLOAD),
+  notes: PAYLOAD,
+  image_url: null,
+  is_external: false,
+  is_featured: false,
+  source: 'submitted:attacker@example.com',
+  tags: PAYLOAD,
+  // --- hostile recap fields (v1.5 living recap) ---
+  recap_headline: PAYLOAD,
+  recap_body: PAYLOAD,
+  recap_url: JS_HREF,
+  recap_photos_url: [PAYLOAD]
 };
 
 // Install guards + a REST stub BEFORE any navigation so they apply to the
@@ -134,6 +173,40 @@ test.describe('stored-XSS: event name renders inert (council exit criterion)', (
     await expect(page).toHaveTitle(new RegExp(PAYLOAD.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 
     await expectInertRender(page, state);
+  });
+
+  test('past event with a hostile recap renders the recap content inert', async ({ page }) => {
+    // Feed the detail page a PAST event whose recap_headline / recap_body /
+    // recap_url / recap_photos_url are all hostile. The recap is the same
+    // /events/detail?id=<id> page once the event is past — the v1.5 living
+    // recap renders every recap string via textContent and only ever builds a
+    // live anchor from an http(s):// recap_url. We assert the same render-safety
+    // invariant the other detail test asserts (no parsed <img>, no fired
+    // dialog, payload survives only as inert text) PLUS that the
+    // javascript:-scheme recap_url never becomes a live, clickable anchor.
+    const state = await armPage(page, [POISONED_RECAP_ROW]);
+    await page.goto('/events/detail/?id=' + FAKE_RECAP_ID, { waitUntil: 'networkidle' });
+    // Give any onerror payload (recap_url / gallery image) a beat to fire.
+    await page.waitForTimeout(300);
+
+    // The hostile recap strings survive as inert text, no <img> was parsed out
+    // of the payload, and the onerror never executed.
+    await expectInertRender(page, state);
+
+    // The javascript:-scheme recap_url MUST NOT have been turned into a live
+    // anchor. There must be zero <a> elements whose resolved href carries the
+    // javascript: scheme (an http(s)-only gate yields none; an unguarded
+    // assignment would yield a clickable XSS link).
+    const liveJsAnchors = await page.evaluate(() => {
+      const anchors = Array.from(document.querySelectorAll('a'));
+      return anchors.filter((a) => {
+        const raw = (a.getAttribute('href') || '').trim().toLowerCase();
+        // Match both the literal attribute and the resolved property.
+        const resolved = (a.href || '').trim().toLowerCase();
+        return raw.indexOf('javascript:') === 0 || resolved.indexOf('javascript:') === 0;
+      }).length;
+    });
+    expect(liveJsAnchors).toBe(0);
   });
 });
 
