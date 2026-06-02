@@ -5,10 +5,10 @@
   <div class="nav-links">\
     <a href="/events" data-nav>Events</a>\
     <a href="/chapters" data-nav>Chapters</a>\
-    <a href="/curriculum" data-nav>Learn</a>\
-    <a href="/speakers" data-nav>Mentor</a>\
-    <a href="/sponsors" data-nav>Sponsor</a>\
-    <a href="/host" data-nav>Host</a>\
+    <a href="/curriculum" data-nav>Tutorials</a>\
+    <a href="/speakers" data-nav>Speakers</a>\
+    <a href="/sponsors" data-nav>Sponsors</a>\
+    <a href="/host" data-nav>Localhosts</a>\
     <div class="nav-more">\
       <button class="nav-more-label">More <span class="chevron">&#9662;</span></button>\
       <div class="nav-more-dropdown">\
