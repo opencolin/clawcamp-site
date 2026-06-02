@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Review Queue — ClawCamp</title>
+<!-- Auth-gated admin tool. Crawlers only ever see the redirect, but keep it
+     out of the index explicitly too (mirrors /dashboard in robots.txt). -->
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bricolage+Grotesque:wght@300;400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/shared.css">
+<style>
+  /* Loading / error states mirror the dashboard (dashboard/index.html). */
+  .adm-loading {
+    min-height: 60vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .adm-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--sand);
+    border-top-color: var(--rust);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .adm-error {
+    min-height: 60vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .adm-error-card { text-align: center; max-width: 400px; }
+  .adm-error-card .icon { font-size: 48px; margin-bottom: 16px; }
+  .adm-error-card h2 { font-size: 24px; font-weight: 800; margin-bottom: 8px; }
+  .adm-error-card p {
+    font-size: 15px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin-bottom: 24px;
+  }
+  .adm-error-card a {
+    display: inline-block;
+    background: var(--rust);
+    color: white;
+    padding: 12px 28px;
+    border-radius: 24px;
+    font-weight: 700;
+    font-size: 15px;
+    text-decoration: none;
+  }
+  .adm-error-card a:hover { background: #a0522d; }
+
+  .adm-header {
+    padding: 48px 48px 0;
+    max-width: 900px;
+  }
+  .adm-title {
+    font-size: clamp(28px, 5vw, 40px);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 8px;
+  }
+  .adm-title em { font-style: normal; color: var(--rust); }
+  .adm-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .adm-queue {
+    padding: 32px 48px 64px;
+    max-width: 900px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .adm-empty {
+    padding: 48px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .adm-empty .big { font-size: 40px; margin-bottom: 12px; }
+
+  .adm-card {
+    border: 1px solid var(--sand);
+    border-radius: 12px;
+    padding: 24px;
+    background: white;
+  }
+  .adm-card-name {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    margin-bottom: 10px;
+    /* Long unbroken spam strings (e.g. a pasted payload) must not blow out
+       the layout. textContent already neutralizes markup; this just wraps. */
+    overflow-wrap: anywhere;
+  }
+  .adm-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    font-size: 13px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 14px;
+  }
+  .adm-card-meta span { display: inline-flex; align-items: center; gap: 6px; }
+  .adm-card-desc {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--ink);
+    margin-bottom: 14px;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+  .adm-card-link {
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+    color: var(--rust);
+    word-break: break-all;
+    margin-bottom: 18px;
+    display: block;
+  }
+  .adm-card-actions { display: flex; gap: 12px; }
+  .adm-btn {
+    border: none;
+    border-radius: 24px;
+    padding: 10px 22px;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .adm-btn:disabled { opacity: 0.5; cursor: default; }
+  .adm-btn-approve { background: #2d6a2f; color: white; }
+  .adm-btn-approve:hover:not(:disabled) { background: #245526; }
+  .adm-btn-reject {
+    background: white;
+    color: #c62828;
+    border: 1px solid #e0bcbc;
+  }
+  .adm-btn-reject:hover:not(:disabled) { background: #fdf2f2; }
+  .adm-card-status {
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+    margin-top: 12px;
+  }
+
+  @media (max-width: 768px) {
+    .adm-header, .adm-queue { padding-left: 20px; padding-right: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="site-nav"></div>
+
+<!-- Loading state (shown until auth + allowlist resolve) -->
+<div class="adm-loading" id="adm-loading">
+  <div class="adm-spinner"></div>
+  <p style="font-size:14px;color:var(--muted);">Checking access…</p>
+</div>
+
+<!-- Error / sign-in-required state (hidden) -->
+<div class="adm-error" id="adm-error" style="display:none;"></div>
+
+<!-- Main review queue (hidden until an allowlisted admin is authenticated) -->
+<div id="adm-content" style="display:none;">
+  <div class="adm-header">
+    <div class="adm-title">Review <em>Queue</em></div>
+    <div class="adm-sub" id="adm-email"></div>
+    <div class="adm-sub">Submitted events awaiting approval. Approve to publish, reject to decline.</div>
+  </div>
+  <div class="adm-queue" id="adm-queue"></div>
+</div>
+
+<div id="site-footer"></div>
+<script src="/js/nav.js"></script>
+<script src="/js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106.2/dist/umd/supabase.js" integrity="sha384-m/8UHFJHeU6nrCKP2hBnAseuvAKUmLF+8e5bWos5CJL023vuxX7kiVL5t8yjsJhV" crossorigin="anonymous"></script>
+<script src="/js/auth.js"></script>
+<script>
+(function() {
+  var loadingEl = document.getElementById('adm-loading');
+  var errorEl = document.getElementById('adm-error');
+  var contentEl = document.getElementById('adm-content');
+  var queueEl = document.getElementById('adm-queue');
+
+  var SUPABASE_URL = window.CLAWCAMP_CONFIG.SUPABASE_URL;
+  var SUPABASE_ANON_KEY = window.CLAWCAMP_CONFIG.SUPABASE_ANON_KEY;
+
+  // ---------------------------------------------------------------------------
+  // ADMIN ALLOWLIST — acknowledged INTERIM STOPGAP (config-in-code).
+  // Superseded by proper RBAC in v1.4 (roadmap). This client-side list is UX
+  // ONLY: it decides whether to *render* the queue for a signed-in user. It is
+  // NOT a security boundary — anyone can read this source. The AUTHORITATIVE
+  // gate is the RLS UPDATE policy from slice A's migration, which only lets
+  // allowlisted admins flip events.status server-side. A non-admin who bypassed
+  // this JS still cannot approve/reject: the PATCH would be rejected by RLS.
+  // Keep this in sync with the allowlist in the events RLS policy.
+  // ---------------------------------------------------------------------------
+  var ADMIN_EMAILS = [
+    'collin@dabl.club'
+  ];
+
+  function isAdmin(email) {
+    if (!email) return false;
+    email = email.toLowerCase();
+    for (var i = 0; i < ADMIN_EMAILS.length; i++) {
+      if (ADMIN_EMAILS[i].toLowerCase() === email) return true;
+    }
+    return false;
+  }
+
+  // showError mirrors the dashboard's sign-in-required card pattern.
+  function showError(msg) {
+    loadingEl.style.display = 'none';
+    contentEl.style.display = 'none';
+    errorEl.style.display = '';
+    errorEl.textContent = '';
+    var card = document.createElement('div');
+    card.className = 'adm-error-card';
+    var icon = document.createElement('div');
+    icon.className = 'icon';
+    icon.textContent = '⚠️';
+    card.appendChild(icon);
+    var h2 = document.createElement('h2');
+    h2.textContent = 'Sign-In Required';
+    card.appendChild(h2);
+    var p = document.createElement('p');
+    p.textContent = msg;
+    card.appendChild(p);
+    var a = document.createElement('a');
+    a.href = '/get-involved';
+    a.textContent = 'Sign In →';
+    card.appendChild(a);
+    errorEl.appendChild(card);
+  }
+
+  // Session-bound fetch — replicates the dashboard's dashAuthFetch. PostgREST
+  // requires the anon key in `apikey`; the logged-in user's JWT rides in
+  // `Authorization`. This is what lets the admin SELECT/UPDATE policies (slice
+  // A) match the caller against the server-side allowlist. Resolves to null
+  // when there is no session (caller must no-op).
+  function authFetch(url, opts) {
+    opts = opts || {};
+    return clawAuth.getSession().then(function(res) {
+      var session = res && res.data && res.data.session;
+      if (!session) return null;
+      var headers = {};
+      var src = opts.headers || {};
+      for (var k in src) { if (src.hasOwnProperty(k)) headers[k] = src[k]; }
+      headers.apikey = SUPABASE_ANON_KEY;
+      headers.Authorization = 'Bearer ' + session.access_token;
+      var merged = {};
+      for (var o in opts) { if (opts.hasOwnProperty(o)) merged[o] = opts[o]; }
+      merged.headers = headers;
+      return fetch(url, merged);
+    });
+  }
+
+  function renderEmpty() {
+    queueEl.textContent = '';
+    var box = document.createElement('div');
+    box.className = 'adm-empty';
+    var big = document.createElement('div');
+    big.className = 'big';
+    big.textContent = '🎉'; // party popper
+    box.appendChild(big);
+    var p = document.createElement('p');
+    p.textContent = 'Queue is clear. No submitted events are waiting for review.';
+    box.appendChild(p);
+    queueEl.appendChild(box);
+  }
+
+  function fmtDate(dateStr) {
+    if (!dateStr) return 'Date TBD';
+    var d = new Date(dateStr + 'T12:00:00');
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' });
+  }
+
+  // Build one queue card. EVERY user-supplied field (name/city/description/
+  // link/notes) is written via textContent — NEVER innerHTML. These are
+  // untrusted public submissions; this is the stored-XSS invariant the
+  // Playwright regression test (tests/xss.spec.js) locks in. An event named
+  // `<img src=x onerror=alert(1)>` must render as inert text here.
+  function renderCard(ev) {
+    var card = document.createElement('div');
+    card.className = 'adm-card';
+    card.setAttribute('data-event-id', String(ev.id));
+
+    var name = document.createElement('div');
+    name.className = 'adm-card-name';
+    name.textContent = ev.name || '(untitled submission)';
+    card.appendChild(name);
+
+    var meta = document.createElement('div');
+    meta.className = 'adm-card-meta';
+    var dateSpan = document.createElement('span');
+    dateSpan.textContent = '📅 ' + fmtDate(ev.event_date);
+    meta.appendChild(dateSpan);
+    if (ev.city) {
+      var citySpan = document.createElement('span');
+      citySpan.textContent = '📍 ' + ev.city;
+      meta.appendChild(citySpan);
+    }
+    card.appendChild(meta);
+
+    if (ev.description) {
+      var desc = document.createElement('div');
+      desc.className = 'adm-card-desc';
+      desc.textContent = ev.description;
+      card.appendChild(desc);
+    }
+
+    if (ev.link) {
+      // Render the submitted URL as inert text (NOT an anchor): an untrusted
+      // href could carry a javascript: or data: scheme. Reviewers can copy it.
+      var link = document.createElement('div');
+      link.className = 'adm-card-link';
+      link.textContent = ev.link;
+      card.appendChild(link);
+    }
+
+    var actions = document.createElement('div');
+    actions.className = 'adm-card-actions';
+
+    var approveBtn = document.createElement('button');
+    approveBtn.className = 'adm-btn adm-btn-approve';
+    approveBtn.textContent = 'Approve';
+
+    var rejectBtn = document.createElement('button');
+    rejectBtn.className = 'adm-btn adm-btn-reject';
+    rejectBtn.textContent = 'Reject';
+
+    var statusEl = document.createElement('div');
+    statusEl.className = 'adm-card-status';
+
+    function setBusy(busy, msg) {
+      approveBtn.disabled = busy;
+      rejectBtn.disabled = busy;
+      statusEl.textContent = msg || '';
+    }
+
+    approveBtn.addEventListener('click', function() {
+      setBusy(true, 'Approving…');
+      // Authoritative gate is RLS: this PATCH only succeeds for an allowlisted
+      // admin. Prefer: return=minimal — we don't need the row back.
+      authFetch(SUPABASE_URL + '/rest/v1/events?id=eq.' + encodeURIComponent(ev.id), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ status: 'approved' })
+      }).then(function(r) {
+        if (r && r.ok) {
+          removeCard(card);
+        } else {
+          setBusy(false, 'Could not approve. Try again.');
+          statusEl.style.color = '#c62828';
+        }
+      }).catch(function() {
+        setBusy(false, 'Could not approve. Try again.');
+        statusEl.style.color = '#c62828';
+      });
+    });
+
+    rejectBtn.addEventListener('click', function() {
+      var reason = window.prompt('Rejection reason (saved to the reviewer notes field):', '');
+      if (reason === null) return; // reviewer cancelled
+      setBusy(true, 'Rejecting…');
+      // Rejection reason writes to `notes` (the free-text reviewer field) per
+      // the plan. Status flips to 'rejected'; RLS enforces admin-only writes.
+      authFetch(SUPABASE_URL + '/rest/v1/events?id=eq.' + encodeURIComponent(ev.id), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ status: 'rejected', notes: reason })
+      }).then(function(r) {
+        if (r && r.ok) {
+          removeCard(card);
+        } else {
+          setBusy(false, 'Could not reject. Try again.');
+          statusEl.style.color = '#c62828';
+        }
+      }).catch(function() {
+        setBusy(false, 'Could not reject. Try again.');
+        statusEl.style.color = '#c62828';
+      });
+    });
+
+    actions.appendChild(approveBtn);
+    actions.appendChild(rejectBtn);
+    card.appendChild(actions);
+    card.appendChild(statusEl);
+    return card;
+  }
+
+  function removeCard(card) {
+    if (card && card.parentNode) card.parentNode.removeChild(card);
+    if (!queueEl.querySelector('.adm-card')) renderEmpty();
+  }
+
+  function loadQueue() {
+    // Reads submitted (non-approved) rows. This works ONLY because slice A adds
+    // an authenticated/admin SELECT policy that can see non-approved rows; the
+    // anon key cannot. Ordered newest-first.
+    authFetch(SUPABASE_URL + '/rest/v1/events?status=eq.submitted' +
+      '&select=id,name,event_date,city,description,link,notes&order=created_at.desc', {
+      headers: {}
+    }).then(function(r) {
+      if (!r) { showError('Please sign in to access the review queue.'); return; }
+      if (!r.ok) {
+        showError('Could not load the review queue. You may not have reviewer access.');
+        return;
+      }
+      return r.json();
+    }).then(function(rows) {
+      if (!rows) return; // showError already handled
+      loadingEl.style.display = 'none';
+      contentEl.style.display = '';
+      queueEl.textContent = '';
+      if (!rows.length) { renderEmpty(); return; }
+      rows.forEach(function(ev) { queueEl.appendChild(renderCard(ev)); });
+    }).catch(function() {
+      showError('Could not load the review queue. Please try again.');
+    });
+  }
+
+  // Gate: require a session AND allowlist membership before rendering anything.
+  // Non-admins / anon are redirected to /get-involved (exit criterion:
+  // "non-admins are redirected"). The redirect — not this page's markup — is
+  // all an unauthenticated crawler ever sees.
+  function gate(session) {
+    if (!session) {
+      window.location.href = '/get-involved';
+      return;
+    }
+    var email = (session.user && session.user.email) || '';
+    if (!isAdmin(email)) {
+      // UX redirect only; RLS is the real wall (see ADMIN_EMAILS comment).
+      window.location.href = '/get-involved';
+      return;
+    }
+    document.getElementById('adm-email').textContent = 'Signed in as ' + email;
+    loadQueue();
+  }
+
+  // Handle the magic-link hash callback, exactly like the dashboard does.
+  clawAuth.onAuthStateChange(function(event, session) {
+    if (event === 'SIGNED_IN' && session) {
+      if (window.location.hash) {
+        window.history.replaceState({}, '', '/admin');
+      }
+      gate(session);
+    }
+  });
+
+  // Check existing session on load.
+  clawAuth.getSession().then(function(result) {
+    var session = result && result.data && result.data.session;
+    if (session) {
+      gate(session);
+    } else if (!window.location.hash) {
+      // No session and no magic-link hash — redirect anon away.
+      window.location.href = '/get-involved';
+    }
+    // If a hash fragment is present, wait for onAuthStateChange to handle it.
+  });
+})();
+</script>
+</body>
+</html>

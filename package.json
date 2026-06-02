@@ -1,0 +1,12 @@
+{
+  "name": "clawcamp-tests",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Self-contained, locally-run Playwright regression tests for claw.camp. NOT wired into CI (v1.1.0 ci.yml is deliberately curl-only).",
+  "scripts": {
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

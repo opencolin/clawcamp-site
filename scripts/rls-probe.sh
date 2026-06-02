@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 # ===========================================================================
 # scripts/rls-probe.sh — RLS lockdown assertions for `contacts` + `chapters`
+#                        + v1.2.0 events moderation gate + event_* child tables
 # ===========================================================================
 # WHAT: curl-based, anon-key probe that asserts the v1.0.0 contacts lockdown
 #       (supabase/migrations/0001_baseline.sql) is actually in effect in prod,
-#       and (since v1.1.0) that anon CANNOT write the new `chapters` table.
+#       that (since v1.1.0) anon CANNOT write the `chapters` table, and that
+#       (since v1.2.0, supabase/migrations/0003_event_content_and_status.sql)
+#       anon CANNOT write the new event_speakers / event_schedule /
+#       event_sponsors child tables and CANNOT read non-approved events.
 #
 # CONTRACT: this script FAILS before the lockdown is applied and PASSES after.
 #   (a) anon GET  /rest/v1/contacts?select=*  must NOT return contact rows —
@@ -16,6 +20,16 @@
 #       (NOT a 2xx / 201 that inserted, or a 2xx / 204 that overwrote a row).
 #       chapters grants anon SELECT-only, so reads stay allowed; writes must
 #       be rejected.
+#   (d) anon POST /rest/v1/event_speakers|event_schedule|event_sponsors must be
+#       denied — expect 401 or 403 (NOT a 2xx that inserted). These tables grant
+#       anon NO write; the only writer is the submit-event Edge Function (which
+#       holds the service-role key). This locks in the council exit criterion:
+#       "anon cannot insert a child row pointing at an arbitrary event_id except
+#       through the Edge Function."
+#   (e) anon GET /rest/v1/events?status=neq.approved must return ZERO rows —
+#       the events_select_approved RLS policy hides every non-approved row from
+#       the hostile client. This proves the HIDDEN_EVENT_IDS replacement:
+#       hidden/non-approved rows no longer cross the wire over REST to anon.
 #
 # Exits non-zero on ANY failed assertion (CI-gate friendly).
 #
@@ -148,13 +162,87 @@ fi
 echo
 
 # ---------------------------------------------------------------------------
+# Assertion (d): anon WRITE on each event_* child table must be denied.
+# Migration 0003 grants anon SELECT-only on event_speakers / event_schedule /
+# event_sponsors so the detail page can read child rows, but NO insert. The
+# ONLY writer is the submit-event Edge Function (service-role key). A POST
+# pointing at an arbitrary event_id must therefore be rejected outright
+# (401/403), never a 2xx that inserted. A 404 means the table isn't applied
+# yet (migrations apply out-of-band by an admin) — a write is then impossible,
+# so we PASS but warn loudly, exactly as (a)/(c) accept more than one safe
+# state. A 2xx (the row was inserted) is the only true breach and always FAILS.
+# ---------------------------------------------------------------------------
+probe_child_write_denied() {
+  # $1 = table name, $2 = label, $3 = JSON body
+  local table="$1" label="$2" body="$3" code
+  echo "[${label}] anon POST /rest/v1/${table} (insert junk child row)"
+  code="$(curl -s -o /dev/null -w '%{http_code}' \
+    -X POST \
+    "${SUPABASE_URL}/rest/v1/${table}" \
+    -H "apikey: ${SUPABASE_ANON_KEY}" \
+    -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+    -H "Content-Type: application/json" \
+    -H "Prefer: return=minimal" \
+    -d "$body")"
+
+  if [ "$code" = "401" ] || [ "$code" = "403" ]; then
+    pass "(${label}) anon POST to ${table} denied with HTTP ${code}"
+  elif [ "$code" = "404" ]; then
+    pass "(${label}) anon POST to ${table} returned HTTP 404 — table not applied yet, write impossible (WARN: apply migration 0003)"
+  elif [ "${code#2}" != "$code" ]; then
+    fail "(${label}) anon POST to ${table} returned HTTP ${code} — the row was INSERTED; anon can write ${table}"
+  else
+    fail "(${label}) anon POST to ${table} returned unexpected HTTP ${code} (expected 401/403, or 404 pre-migration)"
+  fi
+  echo
+}
+
+probe_child_write_denied "event_speakers" "d1" '{"event_id":1,"name":"rls-probe"}'
+probe_child_write_denied "event_schedule" "d2" '{"event_id":1,"title":"rls-probe"}'
+probe_child_write_denied "event_sponsors" "d3" '{"event_id":1,"sponsor_name":"rls-probe"}'
+
+# ---------------------------------------------------------------------------
+# Assertion (e): anon must NOT be able to read non-approved events.
+# The events_select_approved RLS policy (migration 0003) returns ONLY
+# status='approved' rows to anon, replacing the cosmetic client-side
+# HIDDEN_EVENT_IDS filter. We ask explicitly for rows where status != approved;
+# a correctly-locked-down API returns an empty array. If ANY row whose status
+# is not 'approved' comes back, the moderation gate is leaking and we FAIL.
+# A 404 means the events table / status column isn't applied yet (out-of-band) —
+# PASS-with-WARN, mirroring (a)/(c)/(d). A 401/403 (read fully denied) is also
+# an acceptable deny state.
+# ---------------------------------------------------------------------------
+echo "[e] anon GET /rest/v1/events?select=id,status&status=neq.approved"
+EVENTS_RESP="$(curl -s -w $'\n%{http_code}' \
+  "${SUPABASE_URL}/rest/v1/events?select=id,status&status=neq.approved&limit=50" \
+  -H "apikey: ${SUPABASE_ANON_KEY}" \
+  -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")"
+EVENTS_CODE="$(printf '%s' "$EVENTS_RESP" | tail -n1)"
+EVENTS_BODY="$(printf '%s' "$EVENTS_RESP" | sed '$d')"
+
+if [ "$EVENTS_CODE" = "404" ]; then
+  pass "(e) events read returned HTTP 404 — events/status not applied yet (WARN: apply migration 0003)"
+elif [ "$EVENTS_CODE" = "401" ] || [ "$EVENTS_CODE" = "403" ]; then
+  pass "(e) anon read of non-approved events denied with HTTP ${EVENTS_CODE}"
+elif [ "$EVENTS_CODE" = "200" ] && printf '%s' "$EVENTS_BODY" | tr -d '[:space:]' | grep -qE '^\[\]$'; then
+  pass "(e) anon read of non-approved events returned an empty array (moderation gate hides them)"
+elif [ "$EVENTS_CODE" = "200" ] && printf '%s' "$EVENTS_BODY" | grep -qiE '"status"[[:space:]]*:[[:space:]]*"(draft|submitted|rejected)"'; then
+  fail "(e) anon read returned a NON-APPROVED event — moderation gate leaking: ${EVENTS_BODY:0:200}"
+elif [ "$EVENTS_CODE" = "200" ]; then
+  fail "(e) anon read of non-approved events returned HTTP 200 with a non-empty body — rows are readable: ${EVENTS_BODY:0:200}"
+else
+  fail "(e) unexpected HTTP ${EVENTS_CODE} from anon events read — body: ${EVENTS_BODY:0:200}"
+fi
+echo
+
+# ---------------------------------------------------------------------------
 # Summary / exit code
 # ---------------------------------------------------------------------------
 echo "----------------------------------------"
 echo "RLS probe: ${PASS} passed, ${FAIL} failed."
 if [ "$FAIL" -ne 0 ]; then
-  echo "RESULT: FAIL — RLS lockdown is NOT fully in effect (contacts and/or chapters). Apply the migrations."
+  echo "RESULT: FAIL — RLS lockdown is NOT fully in effect (contacts, chapters, events, and/or event_* child tables). Apply the migrations."
   exit 1
 fi
-echo "RESULT: PASS — contacts is locked down (anon cannot read or overwrite) and anon cannot write chapters."
+echo "RESULT: PASS — contacts is locked down, anon cannot write chapters, anon cannot write the event_* child tables, and anon reads ONLY approved events."
 exit 0
