@@ -121,6 +121,10 @@
 var SUPABASE_URL = window.CLAWCAMP_CONFIG.SUPABASE_URL;
 var SUPABASE_KEY = window.CLAWCAMP_CONFIG.SUPABASE_ANON_KEY;
 
+// Canonical production origin for share metadata (OG/Twitter/JSON-LD URLs must
+// be absolute prod URLs for crawlers/unfurlers, not the preview-deploy host).
+var SITE_ORIGIN = 'https://claw.camp';
+
 function $(tag, cls, text) {
   var el = document.createElement(tag);
   if (cls) el.className = cls;
@@ -142,8 +146,103 @@ function initials(name) {
   return (name || '?').split(/\s+/).slice(0,2).map(function(p){ return p[0]||''; }).join('').toUpperCase();
 }
 
+var DEFAULT_OG_IMAGE = SITE_ORIGIN + '/og-image.png';
+
+// Upsert a <meta> tag in <head>, matched by name= or property=. Always sets
+// the value via .setAttribute('content', value) — never innerHTML — so a
+// hostile event field can't inject markup. attr is 'name' or 'property'.
+function setMeta(attr, key, value) {
+  if (value == null) return;
+  var sel = 'meta[' + attr + '="' + key + '"]';
+  var el = document.head.querySelector(sel);
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute(attr, key);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', value);
+}
+
+// Inject per-event share metadata (OG / Twitter / schema.org Event JSON-LD)
+// into <head> client-side. Deferred from v1.0 — unblocked now that approved
+// status + structured data exist. Everything is set via attributes/textContent
+// (never innerHTML), so all event-supplied strings stay inert. Because the
+// parent fetch is RLS-gated to approved-only, drafts/spam never reach here.
+function injectShareMeta(ev) {
+  var title = (ev.name || 'Event') + ' — ClawCamp';
+  // Prefer the structured description; fall back to the page's default copy.
+  var desc = (ev.description || 'ClawCamp event details, speakers, schedule and how to RSVP.')
+    .replace(/\s+/g, ' ').trim().slice(0, 300);
+  var canonical = SITE_ORIGIN + '/events/detail?id=' + encodeURIComponent(ev.id != null ? ev.id : '');
+  var image = ev.image_url || DEFAULT_OG_IMAGE;
+
+  setMeta('name', 'description', desc);
+  setMeta('property', 'og:title', title);
+  setMeta('property', 'og:description', desc);
+  setMeta('property', 'og:type', 'event');
+  setMeta('property', 'og:url', canonical);
+  setMeta('property', 'og:image', image);
+  setMeta('name', 'twitter:card', 'summary_large_image');
+  setMeta('name', 'twitter:title', title);
+  setMeta('name', 'twitter:description', desc);
+  setMeta('name', 'twitter:image', image);
+
+  // schema.org Event JSON-LD, assembled as a plain object and serialized with
+  // JSON.stringify into a text node — no string concatenation of event data
+  // into markup, so stored values cannot break out of the <script> block.
+  var jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    'name': ev.name || '',
+    'description': desc,
+    'url': canonical
+  };
+  if (ev.event_date) {
+    jsonLd.startDate = ev.event_date;
+  }
+  if (ev.image_url) {
+    jsonLd.image = ev.image_url;
+  }
+  if (ev.venue_name || ev.location) {
+    jsonLd.location = {
+      '@type': 'Place',
+      'name': ev.venue_name || ev.location || '',
+      'address': ev.location || ''
+    };
+  }
+  jsonLd.organizer = {
+    '@type': 'Organization',
+    'name': 'ClawCamp',
+    'url': SITE_ORIGIN + '/'
+  };
+
+  var ldEl = document.getElementById('ev-jsonld');
+  if (!ldEl) {
+    ldEl = document.createElement('script');
+    ldEl.type = 'application/ld+json';
+    ldEl.id = 'ev-jsonld';
+    document.head.appendChild(ldEl);
+  }
+  ldEl.textContent = JSON.stringify(jsonLd);
+}
+
 var eventId = getParam('id');
 var eventSlug = getParam('slug');
+
+var REST_HEADERS = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
+
+// Fetch a child table by event_id, returning [] on any failure so callers can
+// fall back to the static EVENT_EXTRAS registry without the page regressing.
+function fetchChild(table, id, select) {
+  var url = SUPABASE_URL + '/rest/v1/' + table +
+    '?event_id=eq.' + encodeURIComponent(id) +
+    '&select=' + select +
+    '&order=sort_order.asc';
+  return fetch(url, { headers: REST_HEADERS })
+    .then(function(r){ return r.ok ? r.json() : []; })
+    .then(function(rows){ return Array.isArray(rows) ? rows : []; })
+    .catch(function(){ return []; });
+}
 
 function loadEvent() {
   var query;
@@ -155,11 +254,26 @@ function loadEvent() {
     showNotFound();
     return;
   }
-  fetch(query, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } })
+  fetch(query, { headers: REST_HEADERS })
     .then(function(r){ return r.json(); })
     .then(function(rows) {
       if (!rows || !rows.length) { showNotFound(); return; }
-      renderEvent(rows[0]);
+      var ev = rows[0];
+      // DB-first: pull structured content from the per-event child tables
+      // (slice A grants anon SELECT on these; the events approved-only RLS
+      // already gated the parent fetch). Each resolves to [] on failure so we
+      // fall back to window.EVENT_EXTRAS without regressing the page.
+      if (ev.id == null) {
+        renderEvent(ev, [], [], []);
+        return;
+      }
+      Promise.all([
+        fetchChild('event_speakers', ev.id, 'name,role,org,photo_url,bio'),
+        fetchChild('event_schedule', ev.id, 'start_time,end_time,title,speaker'),
+        fetchChild('event_sponsors', ev.id, 'sponsor_name,sponsor_url,tier,logo_url')
+      ]).then(function(results) {
+        renderEvent(ev, results[0], results[1], results[2]);
+      });
     })
     .catch(function(){ showNotFound(); });
 }
@@ -169,14 +283,45 @@ function showNotFound() {
   document.getElementById('ev-notfound').style.display = '';
 }
 
-function renderEvent(ev) {
+function renderEvent(ev, dbSpeakers, dbSchedule, dbSponsors) {
   document.getElementById('ev-loading').style.display = 'none';
   var content = document.getElementById('ev-content');
   content.style.display = '';
   document.title = ev.name + ' — ClawCamp';
 
-  // Look up per-event extras (speakers, schedule, sponsors) keyed by id
-  var extras = (window.EVENT_EXTRAS && window.EVENT_EXTRAS[ev.id]) || {};
+  // Per-event share metadata (OG / Twitter / JSON-LD). Built purely via DOM
+  // APIs + textContent/JSON.stringify (never innerHTML) so it stays XSS-safe.
+  // The parent fetch is RLS-gated to approved-only, so drafts/spam can never
+  // reach this code path and emit tags.
+  injectShareMeta(ev);
+
+  dbSpeakers = dbSpeakers || [];
+  dbSchedule = dbSchedule || [];
+  dbSponsors = dbSponsors || [];
+
+  // Normalize DB rows back to the exact render-shape keys the existing render
+  // code already uses, so the DOM-building code below stays nearly identical.
+  var dbSpeakersN = dbSpeakers.map(function(row) {
+    return { name: row.name, role: row.role, org: row.org, photo: row.photo_url };
+  });
+  var dbScheduleN = dbSchedule.map(function(row) {
+    var time = row.start_time || '';
+    if (row.end_time) time = time + '–' + row.end_time;
+    return { time: time, title: row.title, speaker: row.speaker };
+  });
+  var dbSponsorsN = dbSponsors.map(function(row) {
+    return { name: row.sponsor_name, url: row.sponsor_url, logo: row.logo_url };
+  });
+
+  // DB-first with static fallback: use DB rows when present, else fall back to
+  // the static EVENT_EXTRAS registry ONLY when there are ZERO DB rows. This is
+  // why id-173 keeps rendering with zero migration risk, while a DB-sourced
+  // event renders straight from its tables. fullDescription has no DB column,
+  // so it always resolves from extras (see the Description section below).
+  var extras = window.EVENT_EXTRAS && window.EVENT_EXTRAS[ev.id] || {};
+  var speakers = dbSpeakersN.length ? dbSpeakersN : (extras.speakers || []);
+  var schedule = dbScheduleN.length ? dbScheduleN : (extras.schedule || []);
+  var sponsorsFromSrc = dbSponsorsN.length ? dbSponsorsN : (extras.sponsors || []);
 
   // --- Status banner (happening now) ---
   var statusBar = $('div', 'ev-status-bar');
@@ -271,12 +416,12 @@ function renderEvent(ev) {
   }
 
   // Speakers
-  if (extras.speakers && extras.speakers.length) {
+  if (speakers && speakers.length) {
     var spkSec = $('div', 'ev-section');
     spkSec.appendChild($('div', 'ev-section-title', 'Speakers & Facilitators'));
     var wrap = $('div', 'speakers-carousel-wrap');
     var carousel = $('div', 'speakers-carousel'); carousel.id = 'speakers-carousel';
-    extras.speakers.forEach(function(spk) {
+    speakers.forEach(function(spk) {
       var card = $('div', 'spk-card');
       if (spk.photo) {
         var p = $('img', 'spk-photo'); p.src = spk.photo; p.alt = spk.name; p.loading = 'lazy';
@@ -304,11 +449,11 @@ function renderEvent(ev) {
   }
 
   // Schedule
-  if (extras.schedule && extras.schedule.length) {
+  if (schedule && schedule.length) {
     var schSec = $('div', 'ev-section');
     schSec.appendChild($('div', 'ev-section-title', 'Schedule'));
     var timeline = $('div', 'schedule-timeline');
-    extras.schedule.forEach(function(blk) {
+    schedule.forEach(function(blk) {
       var b = $('div', 'sched-block');
       b.appendChild($('div', 'sched-time', blk.time));
       var c = $('div', 'sched-content');
@@ -321,8 +466,8 @@ function renderEvent(ev) {
     main.appendChild(schSec);
   }
 
-  // Sponsors (per-event + always global)
-  var sponsors = (extras.sponsors || []).concat([
+  // Sponsors (per-event from DB/extras + always global Nebius)
+  var sponsors = sponsorsFromSrc.concat([
     { name: 'Nebius', url: 'https://nebius.com' }
   ]);
   var sponSec = $('div', 'ev-section');
