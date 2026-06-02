@@ -1,2 +1,5 @@
 .vercel
 sendgrid.env
+.gstack/
+.claude/worktrees/
+.claude/scheduled_tasks.lock
