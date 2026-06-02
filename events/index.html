@@ -3373,57 +3373,84 @@ function renderEventRow(ev) {
 
 function renderEvents(events) {
   var main = document.getElementById('events-main');
-  // Remove loading message and hardcoded events
-  main.textContent = '';
 
-  // Separate featured vs regular
-  var featured = events.filter(function(e) { return e.is_featured; });
-  var regular = events.filter(function(e) { return !e.is_featured; });
+  // Remove the loading placeholder, but KEEP all static event rows in place.
+  // (Bug fix: previously this wiped main.textContent='' and rendered ONLY the
+  // Supabase rows, which collapsed the page to whatever few events are in the
+  // DB. The events table is RLS-locked and sparse, so the curated static list
+  // is the source of truth and Supabase events are MERGED in additively.)
+  var loading = document.getElementById('events-loading');
+  if (loading) loading.remove();
 
-  // Render featured (chronological order)
+  // Index URLs already present as static rows so DB events that duplicate a
+  // static one are skipped rather than rendered twice.
+  var existingUrls = {};
+  function normalizeHref(h) {
+    if (!h) return '';
+    return h.split('?')[0].split('#')[0].replace(/\/+$/, '').toLowerCase();
+  }
+  main.querySelectorAll('.event-row, .featured-event').forEach(function(row) {
+    var key = normalizeHref(row.getAttribute('href'));
+    if (key) existingUrls[key] = true;
+  });
+
+  // Only render Supabase events not already represented in the static list.
+  var newEvents = events.filter(function(ev) {
+    var k = normalizeHref(ev.link);
+    return !(k && existingUrls[k]);
+  });
+
+  var featured = newEvents.filter(function(e) { return e.is_featured; });
+  var regular = newEvents.filter(function(e) { return !e.is_featured; });
+
+  // Featured at the top, chronological.
   featured.sort(function(a, b) { return (a.event_date || '').localeCompare(b.event_date || ''); });
   featured.forEach(function(ev) {
-    main.appendChild(renderFeaturedEvent(ev));
+    var node = renderFeaturedEvent(ev);
+    var pinned = main.querySelector('.featured-flagship');
+    if (pinned && pinned.parentNode === main) pinned.after(node);
+    else main.insertBefore(node, main.firstChild);
   });
 
-  // Group regular by month
-  var months = {};
+  // Regular: drop each event into its month-section, creating it if missing.
   regular.forEach(function(ev) {
+    if (!ev.event_date) return;
     var d = new Date(ev.event_date + 'T00:00:00');
-    var key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-    if (!months[key]) months[key] = [];
-    months[key].push(ev);
+    var monthIdx = d.getMonth();
+    var monthId = monthNames[monthIdx].toLowerCase();
+    var label = monthNames[monthIdx] + ' ' + d.getFullYear();
+    var section = document.getElementById(monthId);
+    if (!section) {
+      section = document.createElement('div');
+      section.className = 'month-section';
+      section.id = monthId;
+      var divider = document.createElement('div');
+      divider.className = 'section-divider';
+      var divLabel = document.createElement('span');
+      divLabel.className = 'divider-label';
+      divLabel.textContent = label;
+      divider.appendChild(divLabel);
+      var divLine = document.createElement('div');
+      divLine.className = 'divider-line';
+      divider.appendChild(divLine);
+      section.appendChild(divider);
+      var sections = main.querySelectorAll('.month-section');
+      var inserted = false;
+      for (var i = 0; i < sections.length; i++) {
+        var sid = sections[i].id;
+        var idx = monthNames.indexOf(sid.charAt(0).toUpperCase() + sid.slice(1));
+        if (idx > monthIdx) { main.insertBefore(section, sections[i]); inserted = true; break; }
+      }
+      if (!inserted) main.appendChild(section);
+    }
+    section.appendChild(renderEventRow(ev));
   });
 
-  // Sort month keys
-  var sortedMonths = Object.keys(months).sort();
-
-  sortedMonths.forEach(function(key) {
-    var d = new Date(key + '-01T00:00:00');
-    var label = monthNames[d.getMonth()] + ' ' + d.getFullYear();
-    var monthId = monthNames[d.getMonth()].toLowerCase();
-
-    var section = document.createElement('div');
-    section.className = 'month-section';
-    section.id = monthId;
-
-    var divider = document.createElement('div');
-    divider.className = 'section-divider';
-    var divLabel = document.createElement('span');
-    divLabel.className = 'divider-label';
-    divLabel.textContent = label;
-    divider.appendChild(divLabel);
-    var divLine = document.createElement('div');
-    divLine.className = 'divider-line';
-    divider.appendChild(divLine);
-    section.appendChild(divider);
-
-    months[key].sort(function(a, b) { return a.event_date.localeCompare(b.event_date); });
-    months[key].forEach(function(ev) {
-      section.appendChild(renderEventRow(ev));
-    });
-
-    main.appendChild(section);
+  // Sort rows within each month-section by date.
+  main.querySelectorAll('.month-section').forEach(function(section) {
+    var rows = Array.prototype.slice.call(section.querySelectorAll('.event-row'));
+    rows.sort(function(a, b) { return (a.dataset.date || '').localeCompare(b.dataset.date || ''); });
+    rows.forEach(function(row) { section.appendChild(row); });
   });
 }
 
