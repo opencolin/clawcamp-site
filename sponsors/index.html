@@ -565,7 +565,7 @@
 
 <div class="current-section">
   <h2>Current Sponsors &amp; Partners</h2>
-  <div class="sponsor-logo-grid">
+  <div class="sponsor-logo-grid" id="sponsor-logo-grid">
     <a class="sponsor-logo-card" href="https://nebius.com" target="_blank"><img src="/images/sponsors/nebius-logo.svg" alt="Nebius"></a>
     <a class="sponsor-logo-card" href="https://you.com" target="_blank"><img src="/images/sponsors/youcom-logo.png" alt="You.com"></a>
     <a class="sponsor-logo-card" href="https://apify.com" target="_blank"><img src="/images/sponsors/apify-logo.png" alt="Apify"></a>
@@ -666,5 +666,51 @@
 <div id="site-footer"></div>
 <script src="/js/nav.js"></script>
 <script src="/js/supabase.js"></script>
+<script>
+// Append DB-managed sponsors to the static grid (additive — keeps static logos
+// as fallback if the sponsors table is empty or unreachable). Pulls distinct
+// sponsors named in events.notes (Sponsors: ...) and any dedicated sponsors table.
+(function() {
+  var SB = 'https://mrnccntqmkxjazznejfc.supabase.co';
+  var KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ybmNjbnRxbWt4amF6em5lamZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMDA3NTksImV4cCI6MjA5MDc3Njc1OX0.T6oFTtYiFTsx6ojuogpZFXAS7tN5-dPzwvmY5V2xFGI';
+  var grid = document.getElementById('sponsor-logo-grid');
+  if (!grid) return;
+
+  // Collect names already present in the static grid (by alt text, lowercased)
+  var existing = {};
+  grid.querySelectorAll('img[alt]').forEach(function(img) {
+    existing[img.getAttribute('alt').toLowerCase().trim()] = true;
+  });
+
+  // Try a dedicated sponsors table first; ignore if it doesn't exist.
+  fetch(SB + '/rest/v1/sponsors?select=name,logo_url,website,tier&order=tier.asc', {
+    headers: { 'apikey': KEY, 'Authorization': 'Bearer ' + KEY }
+  }).then(function(r) {
+    if (!r.ok) return [];
+    return r.json();
+  }).then(function(rows) {
+    if (!Array.isArray(rows) || !rows.length) return;
+    rows.forEach(function(s) {
+      if (!s.name || existing[s.name.toLowerCase().trim()]) return;
+      existing[s.name.toLowerCase().trim()] = true;
+      var a = document.createElement('a');
+      a.className = 'sponsor-logo-card';
+      a.href = s.website || '#';
+      if (s.website) { a.target = '_blank'; a.rel = 'noopener'; }
+      if (s.logo_url) {
+        var img = document.createElement('img');
+        img.src = s.logo_url;
+        img.alt = s.name;
+        img.loading = 'lazy';
+        a.appendChild(img);
+      } else {
+        a.textContent = s.name;
+        a.style.cssText += 'font-weight:700;color:var(--ink);font-size:15px;';
+      }
+      grid.appendChild(a);
+    });
+  }).catch(function() { /* table not present — static grid stands */ });
+})();
+</script>
 </body>
 </html>

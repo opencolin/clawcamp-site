@@ -241,7 +241,7 @@
 </div>
 
 <div class="main">
-  <div class="speaker-grid">
+  <div class="speaker-grid" id="speaker-grid">
 
     <a class="speaker-card" href="#apply">
       <div class="speaker-photo"><img src="/images/speakers/peter-danenberg.jpg" alt="Peter Danenberg"></div>
@@ -459,5 +459,53 @@
 <div id="site-footer"></div>
 <script src="/js/nav.js"></script>
 <script src="/js/supabase.js"></script>
+<script>
+// Append DB-managed speakers (approved speaker applications) to the static grid.
+// Additive — static featured speakers stay; new ones from contacts are appended.
+(function() {
+  var SB = 'https://mrnccntqmkxjazznejfc.supabase.co';
+  var KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ybmNjbnRxbWt4amF6em5lamZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMDA3NTksImV4cCI6MjA5MDc3Njc1OX0.T6oFTtYiFTsx6ojuogpZFXAS7tN5-dPzwvmY5V2xFGI';
+  var grid = document.getElementById('speaker-grid');
+  if (!grid) return;
+
+  var existing = {};
+  grid.querySelectorAll('.speaker-name').forEach(function(el) {
+    existing[el.textContent.toLowerCase().trim()] = true;
+  });
+
+  // Pull approved/featured speakers: contacts with form_type=speaker and a featured flag
+  // stored in the offers field ('featured'). Falls back silently if none.
+  fetch(SB + '/rest/v1/contacts?form_type=eq.speaker&offers=eq.featured&select=name,title,company,website,linkedin&limit=24', {
+    headers: { 'apikey': KEY, 'Authorization': 'Bearer ' + KEY }
+  }).then(function(r){ return r.ok ? r.json() : []; })
+  .then(function(rows) {
+    if (!Array.isArray(rows)) return;
+    rows.forEach(function(s) {
+      if (!s.name || existing[s.name.toLowerCase().trim()]) return;
+      existing[s.name.toLowerCase().trim()] = true;
+      var card = document.createElement('a');
+      card.className = 'speaker-card';
+      card.href = s.linkedin || s.website || '#apply';
+      if (s.linkedin || s.website) { card.target = '_blank'; card.rel = 'noopener'; }
+
+      var photo = document.createElement('div');
+      photo.className = 'speaker-photo';
+      photo.style.cssText = 'display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--sand),var(--cream));font-size:36px;font-weight:800;color:var(--muted);';
+      photo.textContent = s.name.split(/\s+/).slice(0,2).map(function(p){return p[0]||'';}).join('').toUpperCase();
+
+      var info = document.createElement('div');
+      info.className = 'speaker-info';
+      var n = document.createElement('div'); n.className = 'speaker-name'; n.textContent = s.name;
+      info.appendChild(n);
+      if (s.title) { var t = document.createElement('div'); t.className='speaker-title'; t.textContent = s.title; info.appendChild(t); }
+      if (s.company) { var o = document.createElement('div'); o.className='speaker-org'; o.textContent = s.company; info.appendChild(o); }
+
+      card.appendChild(photo);
+      card.appendChild(info);
+      grid.appendChild(card);
+    });
+  }).catch(function(){});
+})();
+</script>
 </body>
 </html>
