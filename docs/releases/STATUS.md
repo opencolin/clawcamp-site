@@ -31,7 +31,7 @@ Until v1.0.0 ships, treat `contacts` as compromised.
 | 1.1.0 | chapters-are-real | ✅ shipped (766c70a) | `release/1.1.0-chapters-are-real` | `../clawcamp-worktrees/chapters-are-real` | `wf_a30d2f0f-171` |
 | 1.2.0 | structured-content-and-moderation | ✅ shipped (854f8ae) | `release/1.2.0-structured-content-and-moderation` | `../clawcamp-worktrees/structured-content-and-moderation` | `wf_62e3c1c6-bbf` |
 | 1.3.0 | rsvp-and-identity | ✅ shipped (b10abed) | `release/1.3.0-rsvp-and-identity` | `../clawcamp-worktrees/rsvp-and-identity` | `wf_5aff7bd6-cc1` |
-| 1.4.0 | rbac-and-captains-console | 🟡 building | `release/1.4.0-rbac-and-captains-console` | `../clawcamp-worktrees/rbac-and-captains-console` | — |
+| 1.4.0 | rbac-and-captains-console | 🟡 building | `release/1.4.0-rbac-and-captains-console` | `../clawcamp-worktrees/rbac-and-captains-console` | `wf_434e562b-968` |
 | 1.5.0 | recaps-and-living-archive | ⏳ planned | `release/1.5.0-recaps-and-living-archive` | `../clawcamp-worktrees/recaps-and-living-archive` | — |
 | 2.0.0 | self-running-platform | ⏳ planned | `release/2.0.0-self-running-platform` | `../clawcamp-worktrees/self-running-platform` | — |
 
@@ -86,3 +86,4 @@ git worktree list
 - t10 — v1.2.0 build wf_62e3c1c6-bbf DONE (direct-write pattern worked cleanly; no main leakage, no merge conflict). Committed 854f8ae, merged to master, VERSION 1.2.0. Launching v1.3.0.
 - t11 — v1.2.0 shipped (76aec98). v1.3.0 build wf_5aff7bd6-cc1 launched (direct-write template). Reschedule.
 - t12 — v1.3.0 build wf_5aff7bd6-cc1 DONE (5 slices; agent self-bumped VERSION 1.3.0). Clean merge b10abed. 4/7 shipped. Launching v1.4.0.
+- t13 — 4/7 shipped. v1.4.0 build wf_434e562b-968 launched (direct-write template). Reschedule.
