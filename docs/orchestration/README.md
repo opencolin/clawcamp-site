@@ -98,3 +98,15 @@ sequence of releases (v1.0 → v2.0). Each release is:
 4. **DB migrations are git-only.** The anon key cannot run DDL; every migration
    under `supabase/migrations/` needs an admin to apply it server-side. The
    matching `scripts/*-probe.sh` is the red→green gate proving it landed.
+
+5. **Don't return large file content via StructuredOutput — it overflows and the
+   agent fails to call the tool.** The v1.2.0 build (wf_92207da7-d12) died with
+   "subagent completed without calling StructuredOutput" when a slice tried to
+   return a full-file HTML rewrite as `newFiles[].content`. **Fix (now the
+   canonical template):** build agents WRITE FILES DIRECTLY into the worktree
+   via Write/Edit using ABSOLUTE paths under the worktree root, and return only
+   a small manifest `{slice, summary, filesWritten[], followups[]}`. The
+   orchestrator then just `git add -A && commit` in the worktree — no apply step,
+   no content in the response. See `release-builder-TEMPLATE.js`. (Drop per-agent
+   `isolation:'worktree'` for this pattern so writes land in the real release
+   worktree; slices are file-disjoint by the decomposer so they don't collide.)

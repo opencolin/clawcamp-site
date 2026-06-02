@@ -1,71 +1,46 @@
 export const meta = {
-  name: 'release-builder-v1.1.0',
-  description: 'Build ClawCamp v1.1.0 (chapters-are-real) from its plan doc: decompose, fan out worktree-isolated producers, verify',
+  name: 'release-builder-v1.2.0-direct',
+  description: 'Build ClawCamp v1.2.0 (structured-content-and-moderation): agents write files directly to the worktree, return manifest only (avoids large-structured-output failures)',
   phases: [
-    { title: 'Decompose', detail: 'split the release plan into buildable slices' },
-    { title: 'Build', detail: 'one worktree-isolated agent produces each slice' },
-    { title: 'Verify', detail: 'check produced output against exit criteria' },
+    { title: 'Decompose', detail: 'split plan into file-disjoint slices' },
+    { title: 'Build', detail: 'each agent writes its slice files directly into the worktree' },
+    { title: 'Verify', detail: 'check the worktree diff against exit criteria' },
   ],
 }
-
-// Hardcoded (args does not propagate reliably through scriptPath launches).
-const planDoc = '/Users/colin/Code/clawcamp/docs/releases/1.1.0-chapters-are-real.md';
-const repo = '/Users/colin/Code/clawcamp-worktrees/chapters-are-real';
+const repo = '/Users/colin/Code/clawcamp-worktrees/structured-content-and-moderation';
+const planDoc = '/Users/colin/Code/clawcamp/docs/releases/1.2.0-structured-content-and-moderation.md';
 
 phase('Decompose');
-const DECOMP_SCHEMA = {
-  type: 'object', required: ['slices'],
-  properties: { slices: { type: 'array', items: {
-    type: 'object', required: ['key','title','instructions','files'],
-    properties: {
-      key: { type: 'string' }, title: { type: 'string' },
-      instructions: { type: 'string' }, files: { type: 'array', items: { type: 'string' } },
-    } } } },
-};
+const DECOMP_SCHEMA = { type:'object', required:['slices'], properties:{ slices:{ type:'array', items:{
+  type:'object', required:['key','title','instructions','files'],
+  properties:{ key:{type:'string'}, title:{type:'string'}, instructions:{type:'string'}, files:{type:'array',items:{type:'string'}} } } } } };
 const decomp = await agent(
-  `Read the ClawCamp release plan at ${planDoc} (run: cat "${planDoc}"). This is release v1.1.0 "chapters-are-real". Also inspect the repo at ${repo} (it already contains shipped v1.0.0 — chapters/index.html is currently hardcoded with two cards: "ClawCamp San Francisco" and "Online Events"). ` +
-  `Decompose THIS v1.1.0 plan (NOT v1.0.0 — v1.0.0 is already shipped) into 3-5 file-disjoint build slices. The work is: a chapters data table + seed, a real chapter_id FK on events, rewriting chapters/index.html to render from data, per-chapter pages at /chapters/?slug=X, a chapter filter on /events, and a .github/workflows/ci.yml gate running scripts/rls-probe.sh + smoke.sh. ` +
-  `For each slice: kebab key, title, precise instructions naming exact files/paths, and the files it owns. Slices MUST be file-disjoint.`,
-  { label: 'decompose', phase: 'Decompose', schema: DECOMP_SCHEMA }
-);
-log(`v1.1.0 decomposed into ${decomp.slices.length} slices: ${decomp.slices.map(s=>s.key).join(', ')}`);
+  `Read the ClawCamp release plan at ${planDoc} (run: cat "${planDoc}"). Release v1.2.0 "structured-content-and-moderation". Repo: ${repo} (shipped v1.0.0 lockdown + v1.1.0 chapters; migrations 0001+0002 exist; submit-event/index.html stuffs speakers/schedule/sponsors into events.notes; events/detail/index.html reads window.EVENT_EXTRAS from js/event-extras.js). ` +
+  `Decompose into 3-5 FILE-DISJOINT slices. Scope: events.status enum migration + event_speakers/event_schedule/event_sponsors tables (migration 0003); rewrite submit-event saveEvent to insert child rows; rewrite events/detail to read those tables first then fall back to EVENT_EXTRAS; backfill id-173; thin /admin review page (auth + admin allowlist) to approve submitted events; public /events + detail filter to status=approved; per-event OG/JSON-LD; Playwright stored-XSS test. ` +
+  `Each slice: kebab key, title, precise instructions naming exact paths, files owned. Slices MUST be file-disjoint. Do NOT redo v1.0.0/v1.1.0.`,
+  { label:'decompose', phase:'Decompose', schema: DECOMP_SCHEMA });
+log(`v1.2.0 slices: ${decomp.slices.map(s=>s.key).join(', ')}`);
 
 phase('Build');
-const BUILD_SCHEMA = {
-  type: 'object', required: ['slice','newFiles','edits','commands','summary'],
-  properties: {
-    slice: { type: 'string' }, summary: { type: 'string' },
-    newFiles: { type: 'array', items: { type: 'object', required: ['path','content'],
-      properties: { path: { type: 'string' }, content: { type: 'string' } } } },
-    edits: { type: 'array', items: { type: 'object', required: ['path','oldString','newString'],
-      properties: { path: { type: 'string' }, oldString: { type: 'string' }, newString: { type: 'string' }, note: { type: 'string' } } } },
-    commands: { type: 'array', items: { type: 'string' } },
-  },
-};
+// Manifest-only schema — NO file content in the response (avoids overflow).
+const MANIFEST_SCHEMA = { type:'object', required:['slice','filesWritten','summary'], properties:{
+  slice:{type:'string'}, summary:{type:'string', description:'what was built'},
+  filesWritten:{type:'array', items:{type:'string'}, description:'repo-relative paths created or modified'},
+  followups:{type:'array', items:{type:'string'}, description:'anything left for the orchestrator (e.g. migration must be applied server-side)'} } };
 const built = await parallel(decomp.slices.map(s => () =>
   agent(
-    `You are implementing ONE slice of ClawCamp release v1.1.0 (chapters-are-real). Repo root: ${repo} (read exact current file content with cat before writing string edits — they must match byte-for-byte). ` +
+    `Implement ONE slice of ClawCamp v1.2.0 by WRITING FILES DIRECTLY into the worktree. The worktree repo root is ${repo}. Use the Write/Edit tools with ABSOLUTE paths under ${repo}/ for every file you create or change (e.g. ${repo}/supabase/migrations/0003_*.sql). Read existing files first with Read to match style. ` +
     `SLICE: ${s.title}\nFILES YOU OWN: ${(s.files||[]).join(', ')}\n\nINSTRUCTIONS:\n${s.instructions}\n\n` +
-    `IMPORTANT CONTEXT: v1.0.0 is already shipped (RLS migration, js/config.js, VERSION, etc. all exist). Do NOT redo v1.0.0 work. Build ONLY this v1.1.0 slice. ` +
-    `When seeding chapters data, the two existing chapters are "ClawCamp San Francisco" (slug: san-francisco, city: San Francisco) and "Online Events" (slug: online-events, virtual). ` +
-    `Supabase is RLS-locked; any new table needs a migration file under supabase/migrations/ (admin applies it — anon cannot run DDL), plus client code that reads via the anon key. Mirror scripts/rls-probe.sh for any new insert-only table. ` +
-    `Produce: newFiles (full content), edits (exact unique oldString→newString on existing files), commands (idempotent shell: mkdir -p, chmod +x). Vanilla HTML/CSS/JS, no build step. Match existing style. Do NOT touch files outside your slice.`,
-    { label: `build:${s.key}`, phase: 'Build', schema: BUILD_SCHEMA, isolation: 'worktree' }
-  ).then(r => ({ ...r, sliceKey: s.key })).catch(() => null)
-)).then(rs => rs.filter(Boolean));
-log(`Built ${built.length}/${decomp.slices.length} v1.1.0 slices`);
+    `CONTEXT: v1.0.0 + v1.1.0 shipped. New tables need a migration under ${repo}/supabase/migrations/ (admin applies server-side; anon cannot run DDL) + client read paths via the anon key + an rls-probe mirroring scripts/rls-probe.sh. ALWAYS keep a graceful fallback so pages don't regress before migrations apply (detail page reads new tables, falls back to js/event-extras.js; lists fall back if status column absent). Render ALL user-supplied content as inert text via textContent/createElement — NEVER innerHTML with user data (stored-XSS). Decode HTML entities. Vanilla HTML/CSS/JS, no build step. Match existing style. Touch ONLY your slice's files. ` +
+    `Do NOT paste file contents back to me. After writing, return ONLY: slice, a one-paragraph summary, filesWritten (the repo-relative paths you created/modified), and followups. Keep the response small.`,
+    { label:`build:${s.key}`, phase:'Build', schema: MANIFEST_SCHEMA }
+  ).then(r=>({...r,sliceKey:s.key})).catch(e=>({sliceKey:s.key, error:String(e), filesWritten:[], summary:'FAILED'}))
+)).then(rs=>rs.filter(Boolean));
+log(`Build slices done: ${built.map(b=>b.sliceKey+(b.error?'(ERR)':'')).join(', ')}`);
 
 phase('Verify');
-const VERIFY_SCHEMA = {
-  type: 'object', required: ['verdict','gaps'],
-  properties: { verdict: { type: 'string', enum: ['complete','partial','insufficient'] },
-    gaps: { type: 'array', items: { type: 'string' } }, notes: { type: 'string' } },
-};
-const manifest = built.map(b =>
-  `## ${b.sliceKey} — ${b.summary}\nnew: ${(b.newFiles||[]).map(f=>f.path).join(', ')||'(none)'}\nedits: ${(b.edits||[]).map(e=>e.path).join(', ')||'(none)'}\ncmds: ${(b.commands||[]).join(' && ')||'(none)'}`
-).join('\n\n');
+const VERIFY_SCHEMA = { type:'object', required:['verdict','gaps'], properties:{ verdict:{type:'string',enum:['complete','partial','insufficient']}, gaps:{type:'array',items:{type:'string'}}, notes:{type:'string'} } };
 const verify = await agent(
-  `Read the v1.1.0 exit criteria at ${planDoc} (cat it). Produced output:\n\n${manifest}\n\nWould this, once applied, satisfy the exit criteria? List specific gaps. Be skeptical — confirm this is chapters-are-real work, not v1.0.0 re-audit.`,
-  { label: 'verify', phase: 'Verify', schema: VERIFY_SCHEMA }
-);
-return { release: '1.1.0', planDoc, repo, slices: decomp.slices.map(s=>s.key), built, verify };
+  `Read v1.2.0 exit criteria at ${planDoc} (cat it). Inspect the actual worktree diff: run \`cd ${repo} && git status --short && git diff --stat\` and read key changed files. Judge whether the work on disk satisfies the exit criteria. List specific gaps. Confirm: structured-content+moderation work is present (migration 0003 with event_speakers/schedule/sponsors + events.status; submit-event inserts child rows; detail reads tables w/ EVENT_EXTRAS fallback; /admin review page; status=approved filter; XSS-safe rendering).`,
+  { label:'verify', phase:'Verify', schema: VERIFY_SCHEMA });
+return { release:'1.2.0', repo, slices: decomp.slices.map(s=>s.key), built, verify };

@@ -29,7 +29,7 @@ Until v1.0.0 ships, treat `contacts` as compromised.
 |---------|------|-------|--------|----------|----------------|
 | 1.0.0 | lockdown-and-versioning | ✅ shipped (8809d72) | `release/1.0.0-lockdown-and-versioning` | `../clawcamp-worktrees/lockdown-and-versioning` | `wf_daa7adcd-bde` |
 | 1.1.0 | chapters-are-real | ✅ shipped (766c70a) | `release/1.1.0-chapters-are-real` | `../clawcamp-worktrees/chapters-are-real` | `wf_a30d2f0f-171` |
-| 1.2.0 | structured-content-and-moderation | 🟡 building | `release/1.2.0-structured-content-and-moderation` | `../clawcamp-worktrees/structured-content-and-moderation` | `wf_92207da7-d12` |
+| 1.2.0 | structured-content-and-moderation | 🟡 building | `release/1.2.0-structured-content-and-moderation` | `../clawcamp-worktrees/structured-content-and-moderation` | `wf_62e3c1c6-bbf` (wf_92207da7-d12 failed: large-output) |
 | 1.3.0 | rsvp-and-identity | ⏳ planned | `release/1.3.0-rsvp-and-identity` | `../clawcamp-worktrees/rsvp-and-identity` | — |
 | 1.4.0 | rbac-and-captains-console | ⏳ planned | `release/1.4.0-rbac-and-captains-console` | `../clawcamp-worktrees/rbac-and-captains-console` | — |
 | 1.5.0 | recaps-and-living-archive | ⏳ planned | `release/1.5.0-recaps-and-living-archive` | `../clawcamp-worktrees/recaps-and-living-archive` | — |
@@ -82,3 +82,4 @@ git worktree list
 - t6 — v1.1.0 build wf_5f6f040c-45d MISFIRED (args.planDoc empty via scriptPath → re-audited v1.0.0). Root-caused, documented in README. Reset worktree, relaunched as wf_a30d2f0f-171 with hardcoded planDoc/repo. Saved release-builder-TEMPLATE.js.
 - t7 — v1.1.0 build wf_a30d2f0f-171 DONE+correct. Composed 4 slices, added static chapters fallback (no empty-state regression), resolved chapters merge conflict (took data-driven), restored og-default.png, bumped VERSION 1.1.0 + CHANGELOG, merged to master 766c70a (deployed). Launching v1.2.0.
 - t8 — v1.2.0 build wf_92207da7-d12 launched (hardcoded paths, worktree repo). Verifying v1.1.0 chapters live.
+- t9 — v1.2.0 build wf_92207da7-d12 FAILED (StructuredOutput overflow on full-file rewrite). Switched to direct-write+manifest pattern (agents Write to worktree, return paths only); relaunched wf_62e3c1c6-bbf. Promoted as canonical TEMPLATE.
