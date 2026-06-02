@@ -183,10 +183,24 @@ function renderEvent(ev) {
   dot.style.cssText = 'width:8px;height:8px;border-radius:50%;background:white;animation:live-pulse 1.4s ease-in-out infinite';
   statusBar.appendChild(dot);
   statusBar.appendChild(document.createTextNode('This event is happening right now'));
-  // Determine if today
+  // Determine event lifecycle: upcoming / today / past
   var today = new Date();
   var todayStr = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
-  if (ev.event_date === todayStr) statusBar.classList.add('visible');
+  var isPast = ev.event_date < todayStr;
+  if (ev.event_date === todayStr) {
+    statusBar.classList.add('visible');
+  } else if (isPast) {
+    // Past event — show a muted "ended" banner instead
+    statusBar.textContent = '';
+    statusBar.style.background = 'var(--muted)';
+    statusBar.appendChild(document.createTextNode('📦 This event has ended — browse '));
+    var upLink = document.createElement('a');
+    upLink.href = '/events';
+    upLink.textContent = 'upcoming events';
+    upLink.style.cssText = 'color:white;text-decoration:underline;margin-left:4px';
+    statusBar.appendChild(upLink);
+    statusBar.classList.add('visible');
+  }
   content.appendChild(statusBar);
 
   // --- Breadcrumb ---
@@ -221,8 +235,9 @@ function renderEvent(ev) {
   left.appendChild(metaBlock);
 
   if (ev.link) {
-    var rsvp = $('a', 'ev-rsvp-btn', 'RSVP on Luma →');
+    var rsvp = $('a', 'ev-rsvp-btn', isPast ? 'View on Luma →' : 'RSVP on Luma →');
     rsvp.href = ev.link; rsvp.target = '_blank'; rsvp.rel = 'noopener';
+    if (isPast) rsvp.style.background = 'var(--muted)';
     left.appendChild(rsvp);
   }
   hero.appendChild(left);
