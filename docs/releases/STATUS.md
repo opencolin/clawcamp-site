@@ -28,7 +28,7 @@ Until v1.0.0 ships, treat `contacts` as compromised.
 | Version | Slug | State | Branch | Worktree | Workflow runId |
 |---------|------|-------|--------|----------|----------------|
 | 1.0.0 | lockdown-and-versioning | ✅ shipped (8809d72) | `release/1.0.0-lockdown-and-versioning` | `../clawcamp-worktrees/lockdown-and-versioning` | `wf_daa7adcd-bde` |
-| 1.1.0 | chapters-are-real | 🟡 building | `release/1.1.0-chapters-are-real` | `../clawcamp-worktrees/chapters-are-real` | _(launching)_ |
+| 1.1.0 | chapters-are-real | 🟡 building | `release/1.1.0-chapters-are-real` | `../clawcamp-worktrees/chapters-are-real` | `wf_5f6f040c-45d` |
 | 1.2.0 | structured-content-and-moderation | ⏳ planned | `release/1.2.0-structured-content-and-moderation` | `../clawcamp-worktrees/structured-content-and-moderation` | — |
 | 1.3.0 | rsvp-and-identity | ⏳ planned | `release/1.3.0-rsvp-and-identity` | `../clawcamp-worktrees/rsvp-and-identity` | — |
 | 1.4.0 | rbac-and-captains-console | ⏳ planned | `release/1.4.0-rbac-and-captains-console` | `../clawcamp-worktrees/rbac-and-captains-console` | — |
@@ -76,3 +76,4 @@ git worktree list
   38 edits to release worktree, fixed verifier gap (dashboard config.js include),
   committed 8809d72, merged to master + pushed (DEPLOYED). ⚠️ RLS migration
   0001 still needs server-side apply (see v1.0.0 plan doc). Launching v1.1.0.
+- t5 — v1.1.0 build wf_5f6f040c-45d launched, repo arg pointed at the v1.1.0 worktree (lands on the right branch directly). Rescheduled tick.
