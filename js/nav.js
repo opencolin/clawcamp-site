@@ -57,6 +57,18 @@
   </div>\
 </footer>';
 
+  // If a Supabase magic-link lands on any page other than /dashboard, redirect
+  // there so the token can be exchanged properly. This happens when the
+  // emailRedirectTo URL doesn't match the whitelisted redirect URLs in
+  // Supabase Auth settings, causing Supabase to fall back to the site root.
+  (function () {
+    var hash = window.location.hash;
+    var isDashboard = window.location.pathname.replace(/\/$/, '') === '/dashboard';
+    if (!isDashboard && hash && hash.indexOf('access_token=') !== -1) {
+      window.location.replace('/dashboard' + hash);
+    }
+  })();
+
   document.addEventListener('DOMContentLoaded', function () {
     var navEl = document.getElementById('site-nav');
     var footerEl = document.getElementById('site-footer');
