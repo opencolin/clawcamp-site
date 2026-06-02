@@ -3,7 +3,7 @@
 > Live state of the v1.0→v2.0 orchestration. Update this file whenever a release
 > changes state. Any agent resuming the work starts here.
 
-_Last updated: roadmap decided, worktrees + branches staged, v1.0.0 build launching._
+_Last updated: **GOAL MET — 7/7 releases shipped, VERSION 2.0.0.** See docs/orchestration/COMPLETE.md._
 
 ## Orchestration phase
 
@@ -33,7 +33,7 @@ Until v1.0.0 ships, treat `contacts` as compromised.
 | 1.3.0 | rsvp-and-identity | ✅ shipped (b10abed) | `release/1.3.0-rsvp-and-identity` | `../clawcamp-worktrees/rsvp-and-identity` | `wf_5aff7bd6-cc1` |
 | 1.4.0 | rbac-and-captains-console | ✅ shipped (0568b73) | `release/1.4.0-rbac-and-captains-console` | `../clawcamp-worktrees/rbac-and-captains-console` | `wf_434e562b-968` |
 | 1.5.0 | recaps-and-living-archive | ✅ shipped (369420c) | `release/1.5.0-recaps-and-living-archive` | `../clawcamp-worktrees/recaps-and-living-archive` | `wf_39dcc88e-73d` |
-| 2.0.0 | self-running-platform | 🟡 building | `release/2.0.0-self-running-platform` | `../clawcamp-worktrees/self-running-platform` | `wf_4706ec00-849` |
+| 2.0.0 | self-running-platform | ✅ shipped (d6b951f) | `release/2.0.0-self-running-platform` | `../clawcamp-worktrees/self-running-platform` | `wf_4706ec00-849` |
 
 State legend: `planned` · `building` · `in-review` · `shipped` · `blocked`
 
@@ -91,3 +91,4 @@ git worktree list
 - t15 — 5/7 shipped (v1.4.0 41f546e). v1.5.0 build wf_39dcc88e-73d launched. v2.0.0 is last.
 - t16 — v1.5.0 build wf_39dcc88e-73d DONE (5 slices + send-recap function). Merged 369420c, VERSION 1.5.0. 6/7 shipped. Launching FINAL v2.0.0.
 - t17 — 6/7 shipped (v1.5.0 369420c). FINAL v2.0.0 build wf_4706ec00-849 launched. On completion: ship + write COMPLETE.md + stop ticking.
+- t18 — FINAL v2.0.0 build wf_4706ec00-849 DONE. Kept static event list + chapters fallback (events table RLS-locked, only 2 upcoming — avoided live regression). Shipped d6b951f, VERSION 2.0.0. Wrote COMPLETE.md with server-side apply checklist. 7/7 SHIPPED — orchestration complete, ticking stopped.
