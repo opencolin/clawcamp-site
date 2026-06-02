@@ -1,0 +1,17 @@
+# claw.camp is a pure static site. These files are dev/test/CI tooling and
+# backend assets that must NOT be uploaded to Vercel — their presence (esp.
+# package.json + package-lock.json) makes Vercel auto-detect a Node project and
+# run an install/build step that fails. Excluding them restores zero-config
+# static hosting (the way the site deployed before the test tooling landed).
+package.json
+package-lock.json
+playwright.config.js
+node_modules
+tests
+supabase
+.github
+docs
+deno.lock
+ClawCamp-RSVP-PRD.md
+FINAL-PRD.md
+HackMeBaby-PRD.md
