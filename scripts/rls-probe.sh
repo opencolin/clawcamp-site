@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # ===========================================================================
-# scripts/rls-probe.sh — RLS lockdown assertions for the `contacts` table
+# scripts/rls-probe.sh — RLS lockdown assertions for `contacts` + `chapters`
 # ===========================================================================
 # WHAT: curl-based, anon-key probe that asserts the v1.0.0 contacts lockdown
-#       (supabase/migrations/0001_baseline.sql) is actually in effect in prod.
+#       (supabase/migrations/0001_baseline.sql) is actually in effect in prod,
+#       and (since v1.1.0) that anon CANNOT write the new `chapters` table.
 #
 # CONTRACT: this script FAILS before the lockdown is applied and PASSES after.
 #   (a) anon GET  /rest/v1/contacts?select=*  must NOT return contact rows —
@@ -11,6 +12,10 @@
 #       contain verification_token / magic_link_token / email.
 #   (b) anon PATCH /rest/v1/contacts?email=eq.<someone> must be denied —
 #       expect 401 or 403 (NOT a 2xx / 204 that silently overwrote a row).
+#   (c) anon POST/PATCH /rest/v1/chapters must be denied — expect 401 or 403
+#       (NOT a 2xx / 201 that inserted, or a 2xx / 204 that overwrote a row).
+#       chapters grants anon SELECT-only, so reads stay allowed; writes must
+#       be rejected.
 #
 # Exits non-zero on ANY failed assertion (CI-gate friendly).
 #
@@ -86,13 +91,70 @@ fi
 echo
 
 # ---------------------------------------------------------------------------
+# Assertion (c): anon WRITE on chapters must be denied (SELECT-only grant).
+# The v1.1.0 migration grants anon SELECT on chapters so the public directory
+# can read it, but NO insert/update. A locked-down API rejects writes outright
+# (401/403) rather than returning a 2xx/201 (inserted) or 2xx/204 (overwrote).
+#
+# The non-negotiable security property is: an anon write must NEVER SUCCEED.
+# So a 2xx (the write took effect) is the only true breach and always FAILS.
+# 401/403 is the ideal post-migration pass. A 404 means the chapters table
+# isn't applied yet (migrations are applied out-of-band by an admin, not by
+# this repo) — a write is then impossible, so we PASS but warn loudly, exactly
+# as assertion (a) accepts more than one safe state. This keeps the gate from
+# red-flagging master purely on migration-apply ordering while still blocking
+# the instant anon can actually write.
+# ---------------------------------------------------------------------------
+echo "[c1] anon POST /rest/v1/chapters (insert junk row)"
+CHAPTERS_POST_CODE="$(curl -s -o /dev/null -w '%{http_code}' \
+  -X POST \
+  "${SUPABASE_URL}/rest/v1/chapters" \
+  -H "apikey: ${SUPABASE_ANON_KEY}" \
+  -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+  -H "Content-Type: application/json" \
+  -H "Prefer: return=minimal" \
+  -d '{"slug":"rls-probe-x","name":"rls probe"}')"
+
+if [ "$CHAPTERS_POST_CODE" = "401" ] || [ "$CHAPTERS_POST_CODE" = "403" ]; then
+  pass "(c1) anon POST to chapters denied with HTTP ${CHAPTERS_POST_CODE}"
+elif [ "$CHAPTERS_POST_CODE" = "404" ]; then
+  pass "(c1) anon POST to chapters returned HTTP 404 — chapters table not applied yet, write impossible (WARN: apply the chapters migration)"
+elif [ "${CHAPTERS_POST_CODE#2}" != "$CHAPTERS_POST_CODE" ]; then
+  fail "(c1) anon POST to chapters returned HTTP ${CHAPTERS_POST_CODE} — the row was INSERTED; anon can write chapters"
+else
+  fail "(c1) anon POST to chapters returned unexpected HTTP ${CHAPTERS_POST_CODE} (expected 401/403, or 404 pre-migration)"
+fi
+echo
+
+echo "[c2] anon PATCH /rest/v1/chapters?slug=eq.<something>"
+CHAPTERS_PATCH_CODE="$(curl -s -o /dev/null -w '%{http_code}' \
+  -X PATCH \
+  "${SUPABASE_URL}/rest/v1/chapters?slug=eq.rls-probe-x" \
+  -H "apikey: ${SUPABASE_ANON_KEY}" \
+  -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+  -H "Content-Type: application/json" \
+  -H "Prefer: return=minimal" \
+  -d '{"name":"rls-probe-tamper"}')"
+
+if [ "$CHAPTERS_PATCH_CODE" = "401" ] || [ "$CHAPTERS_PATCH_CODE" = "403" ]; then
+  pass "(c2) anon PATCH to chapters denied with HTTP ${CHAPTERS_PATCH_CODE}"
+elif [ "$CHAPTERS_PATCH_CODE" = "404" ]; then
+  pass "(c2) anon PATCH to chapters returned HTTP 404 — chapters table not applied yet, write impossible (WARN: apply the chapters migration)"
+elif [ "${CHAPTERS_PATCH_CODE#2}" != "$CHAPTERS_PATCH_CODE" ]; then
+  fail "(c2) anon PATCH to chapters returned HTTP ${CHAPTERS_PATCH_CODE} — the row was OVERWRITTEN; anon can write chapters"
+else
+  fail "(c2) anon PATCH to chapters returned unexpected HTTP ${CHAPTERS_PATCH_CODE} (expected 401/403, or 404 pre-migration)"
+fi
+echo
+
+# ---------------------------------------------------------------------------
 # Summary / exit code
 # ---------------------------------------------------------------------------
 echo "----------------------------------------"
 echo "RLS probe: ${PASS} passed, ${FAIL} failed."
 if [ "$FAIL" -ne 0 ]; then
-  echo "RESULT: FAIL — contacts lockdown is NOT in effect. Apply migration 0001."
+  echo "RESULT: FAIL — RLS lockdown is NOT fully in effect (contacts and/or chapters). Apply the migrations."
   exit 1
 fi
-echo "RESULT: PASS — contacts is locked down (anon cannot read or overwrite)."
+echo "RESULT: PASS — contacts is locked down (anon cannot read or overwrite) and anon cannot write chapters."
 exit 0

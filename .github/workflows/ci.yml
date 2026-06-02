@@ -1,0 +1,52 @@
+# ===========================================================================
+# ClawCamp CI gate — v1.1.0 (chapters-are-real)
+# ===========================================================================
+# WHAT: the first repo CI gate. Runs the curl-based security + smoke probes on
+#   every PR and on every push to master, BEFORE Vercel promotes the build.
+#
+# THE BLOCKING CHECK: scripts/rls-probe.sh is the required gate. It exits 1 if
+#   the anon key can read contacts, PATCH contacts by email, OR (new in v1.1.0)
+#   write the chapters table. Any of those non-zero exits fails this job and the
+#   whole check, so a regressed RLS lockdown can never silently ship.
+#   scripts/smoke.sh runs after it as an HTTP/200 + content sanity pass on the
+#   live site (including the new per-chapter route).
+#
+# NO SECRETS REQUIRED: both scripts default SUPABASE_URL / SUPABASE_ANON_KEY to
+#   the PUBLIC prod values inline (the anon key ships in the browser bundle by
+#   design). They may still be overridden via env if ever needed.
+#
+# SCOPE: deliberately curl-only (rls-probe + smoke). Playwright / Lighthouse /
+#   axe are explicitly deferred per the council notes — do NOT add them here.
+#
+# DEPLOY PROTECTION (manual, NOT in-repo): for this gate to actually block a
+#   promotion, Vercel deploy protection must be configured to REQUIRE this
+#   GitHub check before promoting master. That toggle lives in the Vercel
+#   dashboard (Project -> Settings -> Git / Deployment Protection), not here.
+# ===========================================================================
+
+name: ci
+
+# Quoted to avoid YAML 1.1 parsing `on` as the boolean true; GitHub reads it
+# as the trigger key either way.
+"on":
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  gate:
+    name: rls-probe + smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Make scripts executable
+        run: chmod +x scripts/rls-probe.sh scripts/smoke.sh
+
+      # REQUIRED gate: a non-zero exit here fails the build (blocks promotion).
+      - name: RLS probe (blocking)
+        run: bash scripts/rls-probe.sh
+
+      - name: Smoke test
+        run: bash scripts/smoke.sh

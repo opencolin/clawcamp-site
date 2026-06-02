@@ -91,6 +91,18 @@
     margin-bottom: 48px;
   }
   .chapter-card { cursor: pointer; }
+  /* Chapter name links to the per-chapter page; keep it visually a heading */
+  .chapter-name-link { text-decoration: none; color: inherit; }
+  .chapter-name-link:hover { color: var(--rust); }
+
+  /* Grid loading / error states */
+  .chapters-loading {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 48px;
+    color: var(--muted);
+    font-size: 15px;
+  }
 
   /* Apply to start a chapter */
   .start-chapter-banner {
@@ -167,11 +179,6 @@
   .btn-cancel-link:hover { color: var(--ink); }
   .form-status { font-size: 13px; font-weight: 600; margin-left: 8px; }
 
-  /* "Other Events" catch-all chapter */
-  .chapter-card.chapter-other .chapter-cover {
-    background: linear-gradient(135deg, #2a2a2a, #444);
-  }
-
   /* No-results state */
   .chapters-empty {
     text-align: center;
@@ -213,117 +220,246 @@
   .join-modal .join-chapter-loc { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
   .join-modal .form-field label { color: var(--muted); }
 
+  /* ===== Event list (per-chapter detail) — mirrors the events directory ===== */
+  /* These .event-* layout rules live in the events/index.html inline <style>,
+     NOT in shared.css, so they must be repeated here for the upcoming-events
+     list to pick up the same grid layout. (shared.css only provides
+     .event-tag/.tag-*, .rsvp-btn/.rsvp-primary, and .meta-item.) */
+  .event-row {
+    display: grid;
+    grid-template-columns: 72px 72px 1fr auto;
+    gap: 0 16px;
+    align-items: stretch;
+    border-bottom: 1px solid var(--cream);
+    transition: background 0.12s;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+  }
+  .event-img {
+    width: 72px;
+    height: 72px;
+    border-radius: 8px;
+    object-fit: cover;
+    align-self: center;
+    flex-shrink: 0;
+  }
+  .event-img-placeholder {
+    width: 72px;
+    height: 72px;
+    border-radius: 8px;
+    background: var(--sand);
+    align-self: center;
+    flex-shrink: 0;
+  }
+  .event-row:hover { background: var(--cream); }
+  .event-date {
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding-top: 22px;
+    border-right: 1px solid var(--cream);
+  }
+  .event-row:hover .event-date { border-right-color: var(--sand); }
+  .date-month {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--rust);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 2px;
+  }
+  .date-day {
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--ink);
+  }
+  .date-dow {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 3px;
+  }
+  .event-body {
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .event-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .event-name {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+  }
+  .event-meta {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .event-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+    max-width: 600px;
+  }
+  .event-action {
+    padding: 20px 0;
+    display: flex;
+    align-items: flex-start;
+    padding-top: 22px;
+    gap: 8px;
+  }
+
+  /* ===== Per-chapter detail view (?slug=...) ===== */
+  .chapter-detail { display: none; }
+  .chapter-detail.visible { display: block; }
+  .chd-breadcrumb { padding: 20px 48px 0; font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .chd-breadcrumb a { color: var(--muted); text-decoration: none; }
+  .chd-breadcrumb a:hover { color: var(--rust); }
+  .chd-breadcrumb .sep { opacity: 0.4; }
+  .chd-cover {
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 64px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 60%, #16213e 100%);
+  }
+  .chd-head { padding: 32px 48px 0; max-width: 760px; }
+  .chd-name { font-size: clamp(28px, 5vw, 42px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 12px; }
+  .chd-location { font-size: 15px; color: var(--muted); display: flex; align-items: center; gap: 6px; margin-bottom: 20px; }
+  .chd-blurb { font-size: 16px; line-height: 1.7; color: var(--ink); margin-bottom: 24px; }
+  .chd-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+  .chd-events-section { padding: 40px 48px 80px; max-width: 900px; }
+  .chd-section-title { font-family: 'DM Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--sand); }
+  .chd-events-empty { padding: 32px 0; color: var(--muted); font-size: 15px; }
+  .chapter-notfound { text-align: center; padding: 80px 48px; display: none; }
+  .chapter-notfound.visible { display: block; }
+  .chapter-notfound h2 { font-size: 24px; font-weight: 800; margin-bottom: 8px; }
+  .chapter-notfound p { color: var(--muted); margin-bottom: 24px; }
+
   @media (max-width: 640px) {
     .chapters-hero { padding: 48px 20px 32px; }
     .chapters-search-wrap { padding: 0 20px; }
     .chapters-grid-section { padding: 0 20px 60px; }
     .start-chapter-banner { flex-direction: column; align-items: flex-start; }
+    .chd-breadcrumb { padding: 16px 20px 0; }
+    .chd-head { padding: 24px 20px 0; }
+    .chd-events-section { padding: 32px 20px 60px; }
+    .event-row { grid-template-columns: 56px 56px 1fr; }
+    .event-img, .event-img-placeholder { width: 56px; height: 56px; }
+    .event-action { display: none; }
   }
 </style>
 </head>
 <body>
 <div id="site-nav"></div>
 
-<div class="chapters-hero">
-  <span class="globe">🌍</span>
-  <h1>ClawCamp Chapters</h1>
-  <p>Local communities bringing AI builders together &mdash; find yours or start one.</p>
-  <button class="btn-rust" onclick="document.getElementById('start-chapter-section').scrollIntoView({behavior:'smooth'})">+ Start a Chapter</button>
-</div>
+<!-- ============ GRID VIEW (default, no ?slug) ============ -->
+<div id="chapters-index-view">
+  <div class="chapters-hero">
+    <span class="globe">🌍</span>
+    <h1>ClawCamp Chapters</h1>
+    <p>Local communities bringing AI builders together &mdash; find yours or start one.</p>
+    <button class="btn-rust" onclick="document.getElementById('start-chapter-section').scrollIntoView({behavior:'smooth'})">+ Start a Chapter</button>
+  </div>
 
-<div class="chapters-search-wrap">
-  <input type="text" class="chapters-search-input" id="chapter-search"
-    placeholder="Type your city or chapter name..."
-    oninput="filterChapters(this.value)">
-  <p class="search-hint">Search to find your city &mdash; or create a new chapter below</p>
-</div>
+  <div class="chapters-search-wrap">
+    <input type="text" class="chapters-search-input" id="chapter-search"
+      placeholder="Type your city or chapter name..."
+      oninput="filterChapters(this.value)">
+    <p class="search-hint">Search to find your city &mdash; or create a new chapter below</p>
+  </div>
 
-<div class="chapters-grid-section">
-  <div class="chapters-section-label">Active Chapters</div>
+  <div class="chapters-grid-section">
+    <div class="chapters-section-label">Active Chapters</div>
 
-  <div class="chapters-grid" id="chapters-grid">
-    <!-- ClawCamp SF -->
-    <div class="chapter-card" onclick="openJoin('ClawCamp SF, CA','San Francisco, California, US','🦞')" data-name="clawcamp sf ca san francisco" id="chapter-sf">
-      <div class="chapter-cover" style="background:linear-gradient(135deg,#1a1a2e 0%,#0f3460 60%,#16213e 100%)">
-        <span>🦞</span>
-      </div>
-      <div class="chapter-body">
-        <div class="chapter-name">ClawCamp SF, CA</div>
-        <div class="chapter-location">📍 San Francisco, California, US</div>
-        <div class="chapter-desc">We are a community of AI builders, learners, and creators in the Bay Area passionate about personal AI agents, OpenClaw, and hands-on collaboration.</div>
-        <div class="chapter-stats">
-          <div class="chapter-stat"><strong id="sf-followers">—</strong>followers</div>
-          <div class="chapter-stat"><strong id="sf-upcoming">5</strong>upcoming</div>
-          <div class="chapter-stat"><strong>3</strong>captains</div>
-        </div>
-      </div>
+    <div class="chapters-grid" id="chapters-grid">
+      <div class="chapters-loading" id="chapters-loading">Loading chapters…</div>
     </div>
 
-    <!-- Other Events -->
-    <div class="chapter-card chapter-other" onclick="openJoin('Other Events','Global','🌐')" data-name="other events global online">
-      <div class="chapter-cover" style="background:linear-gradient(135deg,#2a2a2a,#444)">
-        <span>🌐</span>
+    <p class="chapters-empty" id="chapters-empty">No chapters found matching "<span id="search-term"></span>" &mdash; be the first to start one!</p>
+
+    <!-- Start a chapter -->
+    <div id="start-chapter-section">
+      <div class="start-chapter-banner">
+        <div>
+          <h3>+ Apply to create a new chapter</h3>
+          <p>Start a ClawCamp chapter in your city and become a captain.</p>
+        </div>
+        <button class="btn-rust" onclick="toggleStartForm()">Start Application</button>
       </div>
-      <div class="chapter-body">
-        <div class="chapter-name">Other Events</div>
-        <div class="chapter-location">📍 Global / Online</div>
-        <div class="chapter-desc">Community events and meetups not yet affiliated with a specific chapter. Great starting point before launching your own local group.</div>
-        <div class="chapter-stats">
-          <div class="chapter-stat"><strong>—</strong>followers</div>
-          <div class="chapter-stat"><strong>—</strong>upcoming</div>
-          <div class="chapter-stat"><strong>2</strong>captains</div>
+
+      <div class="start-form-card" id="start-form-card">
+        <h3>🌍 Apply to Start a Chapter</h3>
+        <div class="form-field">
+          <label>City / Region <span>*</span></label>
+          <input type="text" id="chapter-city" placeholder="e.g. Austin, TX" required>
+          <p class="form-hint">Where you want to organise ClawCamp events</p>
+        </div>
+        <div class="form-field">
+          <label>Your Name <span>*</span></label>
+          <input type="text" id="chapter-name-input" placeholder="Your full name">
+        </div>
+        <div class="form-field">
+          <label>Email <span>*</span></label>
+          <input type="email" id="chapter-email" placeholder="you@example.com">
+        </div>
+        <div class="form-field">
+          <label>Tell us about your community <span>*</span></label>
+          <textarea id="chapter-about" rows="5"
+            placeholder="Who are you? What's the AI scene like in your city? Why do you want to captain a ClawCamp chapter?"></textarea>
+        </div>
+        <div class="form-actions">
+          <button class="btn-rust" onclick="submitChapterApp()">Start Application</button>
+          <button class="btn-cancel-link" onclick="toggleStartForm()">Cancel</button>
+          <span class="form-status" id="chapter-form-status"></span>
         </div>
       </div>
     </div>
   </div>
+</div>
 
-  <p class="chapters-empty" id="chapters-empty">No chapters found matching "<span id="search-term"></span>" &mdash; be the first to start one!</p>
-
-  <!-- Start a chapter -->
-  <div id="start-chapter-section">
-    <div class="start-chapter-banner">
-      <div>
-        <h3>+ Apply to create a new chapter</h3>
-        <p>Start a ClawCamp chapter in your city and become a captain.</p>
-      </div>
-      <button class="btn-rust" onclick="toggleStartForm()">Start Application</button>
-    </div>
-
-    <div class="start-form-card" id="start-form-card">
-      <h3>🌍 Apply to Start a Chapter</h3>
-      <div class="form-field">
-        <label>City / Region <span>*</span></label>
-        <input type="text" id="chapter-city" placeholder="e.g. Austin, TX" required>
-        <p class="form-hint">Where you want to organise ClawCamp events</p>
-      </div>
-      <div class="form-field">
-        <label>Your Name <span>*</span></label>
-        <input type="text" id="chapter-name-input" placeholder="Your full name">
-      </div>
-      <div class="form-field">
-        <label>Email <span>*</span></label>
-        <input type="email" id="chapter-email" placeholder="you@example.com">
-      </div>
-      <div class="form-field">
-        <label>Tell us about your community <span>*</span></label>
-        <textarea id="chapter-about" rows="5"
-          placeholder="Who are you? What's the AI scene like in your city? Why do you want to captain a ClawCamp chapter?"></textarea>
-      </div>
-      <div class="form-actions">
-        <button class="btn-rust" onclick="submitChapterApp()">Start Application</button>
-        <button class="btn-cancel-link" onclick="toggleStartForm()">Cancel</button>
-        <span class="form-status" id="chapter-form-status"></span>
-      </div>
-    </div>
+<!-- ============ DETAIL VIEW (?slug=...) ============ -->
+<div class="chapter-detail" id="chapter-detail">
+  <div class="chd-breadcrumb">
+    <a href="/chapters">Chapters</a>
+    <span class="sep">›</span>
+    <span id="chd-crumb-name">Chapter</span>
   </div>
+  <div class="chd-cover" id="chd-cover"><span id="chd-emoji">🦞</span></div>
+  <div class="chd-head">
+    <h1 class="chd-name" id="chd-name">Chapter</h1>
+    <div class="chd-location" id="chd-location"></div>
+    <p class="chd-blurb" id="chd-blurb"></p>
+    <div class="chd-actions" id="chd-actions"></div>
+  </div>
+  <div class="chd-events-section">
+    <div class="chd-section-title">Upcoming Events</div>
+    <div id="chd-events"></div>
+  </div>
+</div>
+
+<!-- ============ CHAPTER NOT FOUND (?slug=unknown) ============ -->
+<div class="chapter-notfound" id="chapter-notfound">
+  <h2>Chapter not found</h2>
+  <p>This chapter doesn&rsquo;t exist yet. Browse all chapters or start one in your city.</p>
+  <a href="/chapters" class="btn-rust">Browse all chapters →</a>
 </div>
 
 <!-- Join Modal -->
 <div class="join-modal-overlay" id="join-modal-overlay" onclick="closeJoin(event)">
   <div class="join-modal">
     <button class="join-modal-close" onclick="closeJoin()">&times;</button>
-    <h2>Join <span id="join-chapter-name">ClawCamp SF, CA</span></h2>
-    <p class="join-chapter-loc" id="join-chapter-loc">📍 San Francisco, California, US</p>
+    <h2>Join <span id="join-chapter-name">this chapter</span></h2>
+    <p class="join-chapter-loc" id="join-chapter-loc"></p>
     <p style="font-size:14px;color:var(--muted);margin-bottom:20px;line-height:1.5;">Enter your email to follow this chapter and get notified about upcoming events.</p>
     <div class="form-field">
       <label>Email <span>*</span></label>
@@ -350,19 +486,180 @@
 var SUPABASE_URL = window.CLAWCAMP_CONFIG.SUPABASE_URL;
 var SUPABASE_KEY = window.CLAWCAMP_CONFIG.SUPABASE_ANON_KEY;
 
-// Load follower counts (contacts with form_type=chapter_follow + city)
-(function loadFollowers() {
-  fetch(SUPABASE_URL + '/rest/v1/contacts?form_type=eq.chapter_follow&select=city', {
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
-  }).then(function(r){ return r.json(); })
-  .then(function(rows){
-    var sfCount = rows.filter(function(r){ return (r.city||'').toLowerCase().indexOf('san francisco') >= 0 || (r.city||'').toLowerCase().indexOf('sf') >= 0; }).length;
-    var sfEl = document.getElementById('sf-followers');
-    if (sfEl) sfEl.textContent = sfCount || 0;
-  }).catch(function(){});
-})();
+var SB_HEADERS = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
 
-// Search / filter
+var daysOfWeek = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+var monthNamesShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var monthNamesLong = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+// Today's date as a YYYY-MM-DD string (local), used to filter to upcoming events.
+function todayStr() {
+  var t = new Date();
+  return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+}
+
+function getParam(name) {
+  return new URLSearchParams(window.location.search).get(name);
+}
+
+// Build a human "City, Region, Country" location string from a chapter row.
+function chapterLocation(ch) {
+  var parts = [ch.city, ch.region, ch.country].filter(function(p) { return p && String(p).trim(); });
+  return parts.join(', ');
+}
+
+// ===========================================================================
+// SHARED DATA: fetch all chapters once, then either render the grid or the
+// per-chapter detail view depending on whether ?slug is present.
+// ===========================================================================
+var _slug = getParam('slug');
+
+function loadChapters() {
+  return fetch(SUPABASE_URL + '/rest/v1/chapters?select=*&order=name.asc', { headers: SB_HEADERS })
+    .then(function(r) { return r.ok ? r.json() : []; })
+    .catch(function() { return []; });
+}
+
+function loadChapterStats() {
+  return fetch(SUPABASE_URL + '/rest/v1/chapter_stats?select=*', { headers: SB_HEADERS })
+    .then(function(r) { return r.ok ? r.json() : []; })
+    .catch(function() { return []; });
+}
+
+// Boot: branch on ?slug. Both branches reuse the single chapters fetch.
+if (_slug) {
+  document.getElementById('chapters-index-view').style.display = 'none';
+  loadChapters().then(function(chapters) { renderDetail(chapters, _slug); });
+} else {
+  Promise.all([loadChapters(), loadChapterStats()]).then(function(res) {
+    renderGrid(res[0], res[1]);
+  });
+}
+
+// ===========================================================================
+// GRID VIEW
+// ===========================================================================
+// Static fallback so the page never regresses to empty before the chapters
+// table (migration 0002) is applied server-side. Mirrors the seed rows.
+var FALLBACK_CHAPTERS = [
+  { slug: 'san-francisco', name: 'ClawCamp San Francisco', city: 'San Francisco', region: 'California', country: 'US', emoji: '🦞',
+    cover_gradient: 'linear-gradient(135deg,#1a1a2e 0%,#0f3460 60%,#16213e 100%)',
+    blurb: 'A community of AI builders, learners, and creators in the Bay Area passionate about personal AI agents, OpenClaw, and hands-on collaboration.' },
+  { slug: 'online-events', name: 'Online Events', city: '', region: '', country: 'Global', emoji: '🌐',
+    cover_gradient: 'linear-gradient(135deg,#2a2a2a,#444)',
+    blurb: 'Virtual events and meetups open to anyone, anywhere — not tied to a specific city chapter. Great starting point before launching your own local group.' }
+];
+
+function renderGrid(chapters, stats) {
+  var grid = document.getElementById('chapters-grid');
+  grid.textContent = '';
+
+  // Fall back to the static seed when the DB has no chapters yet (table not
+  // applied) so the live page keeps showing the SF + Online cards.
+  if (!chapters || !chapters.length) {
+    chapters = FALLBACK_CHAPTERS;
+  }
+
+  // Index stats by slug (preferred) and id so we can join either way.
+  var statsBySlug = {};
+  var statsById = {};
+  (stats || []).forEach(function(s) {
+    if (s.slug != null) statsBySlug[s.slug] = s;
+    if (s.id != null) statsById[s.id] = s;
+    if (s.chapter_id != null) statsById[s.chapter_id] = s;
+  });
+
+  chapters.forEach(function(ch) {
+    var stat = statsBySlug[ch.slug] || statsById[ch.id] || {};
+    grid.appendChild(buildChapterCard(ch, stat));
+  });
+}
+
+function buildChapterCard(ch, stat) {
+  var name = ch.name || 'ClawCamp Chapter';
+  var location = chapterLocation(ch);
+  var emoji = ch.emoji || '🦞';
+
+  var card = document.createElement('div');
+  card.className = 'chapter-card';
+  // data-name keeps the existing filterChapters() search working unchanged:
+  // lowercased name + city so typing either matches.
+  card.dataset.name = (name + ' ' + (ch.city || '')).toLowerCase().trim();
+  if (ch.slug) card.id = 'chapter-' + ch.slug;
+  // Clicking the card opens the join modal exactly as before.
+  card.addEventListener('click', function() { openJoin(name, location, emoji); });
+
+  // Cover with the row's gradient + emoji
+  var cover = document.createElement('div');
+  cover.className = 'chapter-cover';
+  if (ch.cover_gradient) cover.style.background = ch.cover_gradient;
+  var emojiSpan = document.createElement('span');
+  emojiSpan.textContent = emoji;
+  cover.appendChild(emojiSpan);
+  card.appendChild(cover);
+
+  // Body
+  var body = document.createElement('div');
+  body.className = 'chapter-body';
+
+  // Name — optionally links to the per-chapter page (?slug=...)
+  var nameEl = document.createElement('div');
+  nameEl.className = 'chapter-name';
+  if (ch.slug) {
+    var nameLink = document.createElement('a');
+    nameLink.className = 'chapter-name-link';
+    nameLink.href = '/chapters/?slug=' + encodeURIComponent(ch.slug);
+    nameLink.textContent = name;
+    // Don't let the link click also trigger the card's join-modal handler.
+    nameLink.addEventListener('click', function(e) { e.stopPropagation(); });
+    nameEl.appendChild(nameLink);
+  } else {
+    nameEl.textContent = name;
+  }
+  body.appendChild(nameEl);
+
+  if (location) {
+    var locEl = document.createElement('div');
+    locEl.className = 'chapter-location';
+    locEl.textContent = '📍 ' + location;
+    body.appendChild(locEl);
+  }
+
+  if (ch.blurb) {
+    var descEl = document.createElement('div');
+    descEl.className = 'chapter-desc';
+    descEl.textContent = ch.blurb;
+    body.appendChild(descEl);
+  }
+
+  // Stats — real DB-derived numbers from chapter_stats (never goes dark).
+  var statsEl = document.createElement('div');
+  statsEl.className = 'chapter-stats';
+  statsEl.appendChild(buildStat(numOr(stat.followers, 0), 'followers'));
+  statsEl.appendChild(buildStat(numOr(stat.upcoming_events, 0), 'upcoming'));
+  statsEl.appendChild(buildStat(numOr(stat.captains, 0), 'captains'));
+  body.appendChild(statsEl);
+
+  card.appendChild(body);
+  return card;
+}
+
+// Coerce a possibly-missing stat into a display number (0 when absent).
+function numOr(v, fallback) {
+  return (v === null || v === undefined || v === '') ? fallback : v;
+}
+
+function buildStat(value, label) {
+  var wrap = document.createElement('div');
+  wrap.className = 'chapter-stat';
+  var strong = document.createElement('strong');
+  strong.textContent = value;
+  wrap.appendChild(strong);
+  wrap.appendChild(document.createTextNode(label));
+  return wrap;
+}
+
+// Search / filter — unchanged behaviour (operates on .chapter-card[data-name]).
 function filterChapters(q) {
   var val = q.toLowerCase().trim();
   var cards = document.querySelectorAll('.chapter-card');
@@ -380,7 +677,186 @@ function filterChapters(q) {
   }
 }
 
-// Toggle start form
+// ===========================================================================
+// DETAIL VIEW (?slug=...)
+// ===========================================================================
+function renderDetail(chapters, slug) {
+  var match = null;
+  (chapters || []).forEach(function(ch) {
+    if (ch.slug != null && String(ch.slug) === String(slug)) match = ch;
+  });
+
+  if (!match) {
+    document.getElementById('chapter-notfound').classList.add('visible');
+    document.title = 'Chapter not found — ClawCamp';
+    return;
+  }
+
+  var name = match.name || 'ClawCamp Chapter';
+  var location = chapterLocation(match);
+  var emoji = match.emoji || '🦞';
+
+  // Head / meta
+  document.title = name + ' — ClawCamp';
+  setMeta(name, match);
+
+  document.getElementById('chd-crumb-name').textContent = name;
+  document.getElementById('chd-emoji').textContent = emoji;
+  if (match.cover_gradient) {
+    document.getElementById('chd-cover').style.background = match.cover_gradient;
+  }
+  document.getElementById('chd-name').textContent = name;
+
+  var locEl = document.getElementById('chd-location');
+  if (location) { locEl.textContent = '📍 ' + location; } else { locEl.style.display = 'none'; }
+
+  var blurbEl = document.getElementById('chd-blurb');
+  if (match.blurb) { blurbEl.textContent = match.blurb; } else { blurbEl.style.display = 'none'; }
+
+  // Actions: follow/join this chapter (reuses the modal).
+  var actions = document.getElementById('chd-actions');
+  var joinBtn = document.createElement('button');
+  joinBtn.className = 'btn-rust';
+  joinBtn.textContent = '+ Follow this chapter';
+  joinBtn.addEventListener('click', function() { openJoin(name, location, emoji); });
+  actions.appendChild(joinBtn);
+
+  document.getElementById('chapter-detail').classList.add('visible');
+
+  // Upcoming events for this chapter, joined via events.chapter_id.
+  loadChapterEvents(match.id);
+}
+
+function setMeta(name, ch) {
+  var canonical = 'https://claw.camp/chapters/?slug=' + encodeURIComponent(ch.slug);
+  var desc = ch.blurb || ('Find ClawCamp events and join the ' + name + ' chapter.');
+  var c = document.querySelector('link[rel="canonical"]');
+  if (c) c.setAttribute('href', canonical);
+  setMetaTag('property', 'og:title', name + ' — ClawCamp');
+  setMetaTag('property', 'og:description', desc);
+  setMetaTag('property', 'og:url', canonical);
+  setMetaTag('name', 'twitter:title', name + ' — ClawCamp');
+  setMetaTag('name', 'twitter:description', desc);
+  setMetaTag('name', 'description', desc);
+}
+
+function setMetaTag(attr, key, value) {
+  var el = document.querySelector('meta[' + attr + '="' + key + '"]');
+  if (el) el.setAttribute('content', value);
+}
+
+function loadChapterEvents(chapterId) {
+  var container = document.getElementById('chd-events');
+  var url = SUPABASE_URL + '/rest/v1/events?chapter_id=eq.' + encodeURIComponent(chapterId) +
+    '&select=*&event_date=gte.' + todayStr() + '&order=event_date.asc';
+  fetch(url, { headers: SB_HEADERS })
+    .then(function(r) { return r.ok ? r.json() : []; })
+    .then(function(events) {
+      container.textContent = '';
+      // Defensive client-side filter to upcoming in case the gte. filter is ignored.
+      var today = todayStr();
+      var upcoming = (events || []).filter(function(ev) { return !ev.event_date || ev.event_date >= today; });
+      if (!upcoming.length) {
+        var empty = document.createElement('p');
+        empty.className = 'chd-events-empty';
+        empty.textContent = 'No upcoming events scheduled yet — follow this chapter to get notified.';
+        container.appendChild(empty);
+        return;
+      }
+      upcoming.forEach(function(ev) { container.appendChild(renderEventRow(ev)); });
+    })
+    .catch(function() {
+      container.textContent = '';
+      var empty = document.createElement('p');
+      empty.className = 'chd-events-empty';
+      empty.textContent = 'Could not load events right now.';
+      container.appendChild(empty);
+    });
+}
+
+// Event row — mirrors the events directory's .event-row visual style.
+function renderEventRow(ev) {
+  var d = ev.event_date ? new Date(ev.event_date + 'T00:00:00') : null;
+  var day = d ? d.getDate() : '';
+  var dow = d ? daysOfWeek[d.getDay()] : '';
+  var mon = d ? monthNamesShort[d.getMonth()].toUpperCase() : '';
+
+  var a = document.createElement('a');
+  a.className = 'event-row';
+  a.href = ev.link || '#';
+  if (ev.is_external) { a.target = '_blank'; a.rel = 'noopener'; }
+  a.dataset.type = ev.event_type || '';
+  a.dataset.date = ev.event_date || '';
+  a.dataset.city = ev.city || '';
+
+  // Date column
+  var dateDiv = document.createElement('div');
+  dateDiv.className = 'event-date';
+  var monEl = document.createElement('div'); monEl.className = 'date-month'; monEl.textContent = mon;
+  var dayEl = document.createElement('div'); dayEl.className = 'date-day'; dayEl.textContent = day;
+  var dowEl = document.createElement('div'); dowEl.className = 'date-dow'; dowEl.textContent = dow;
+  dateDiv.appendChild(monEl); dateDiv.appendChild(dayEl); dateDiv.appendChild(dowEl);
+  a.appendChild(dateDiv);
+
+  // Image / placeholder
+  if (ev.image_url) {
+    var img = document.createElement('img');
+    img.className = 'event-img';
+    img.src = ev.image_url; img.alt = ev.name || ''; img.loading = 'lazy';
+    a.appendChild(img);
+  } else {
+    var ph = document.createElement('div');
+    ph.className = 'event-img-placeholder';
+    a.appendChild(ph);
+  }
+
+  // Body
+  var body = document.createElement('div');
+  body.className = 'event-body';
+  var top = document.createElement('div');
+  top.className = 'event-top';
+  var nameEl = document.createElement('span');
+  nameEl.className = 'event-name';
+  nameEl.textContent = ev.name || 'Untitled event';
+  top.appendChild(nameEl);
+  if (ev.event_type) {
+    var tagEl = document.createElement('span');
+    tagEl.className = 'event-tag tag-' + ev.event_type;
+    tagEl.textContent = ev.event_type.charAt(0).toUpperCase() + ev.event_type.slice(1);
+    top.appendChild(tagEl);
+  }
+  body.appendChild(top);
+
+  var meta = document.createElement('div');
+  meta.className = 'event-meta';
+  if (ev.location) { var loc = document.createElement('span'); loc.className = 'meta-item'; loc.textContent = '📍 ' + ev.location; meta.appendChild(loc); }
+  if (ev.time_range) { var time = document.createElement('span'); time.className = 'meta-item'; time.textContent = ev.time_range; meta.appendChild(time); }
+  if (ev.venue_name) { var venue = document.createElement('span'); venue.className = 'meta-item'; venue.textContent = ev.venue_name; meta.appendChild(venue); }
+  body.appendChild(meta);
+
+  if (ev.description) {
+    var desc = document.createElement('p');
+    desc.className = 'event-desc';
+    desc.textContent = ev.description;
+    body.appendChild(desc);
+  }
+  a.appendChild(body);
+
+  // Action
+  var action = document.createElement('div');
+  action.className = 'event-action';
+  var btn = document.createElement('span');
+  btn.className = 'rsvp-btn rsvp-primary';
+  btn.textContent = ev.is_external ? 'RSVP →' : 'Details →';
+  action.appendChild(btn);
+  a.appendChild(action);
+
+  return a;
+}
+
+// ===========================================================================
+// START-A-CHAPTER APPLICATION FORM (unchanged — writes to contacts)
+// ===========================================================================
 function toggleStartForm() {
   var form = document.getElementById('start-form-card');
   form.classList.toggle('open');
@@ -389,7 +865,6 @@ function toggleStartForm() {
   }
 }
 
-// Submit chapter application — saves to contacts
 function submitChapterApp() {
   var city = document.getElementById('chapter-city').value.trim();
   var name = document.getElementById('chapter-name-input').value.trim();
@@ -437,7 +912,9 @@ function submitChapterApp() {
   });
 }
 
-// Join chapter modal
+// ===========================================================================
+// JOIN CHAPTER MODAL (unchanged — writes a chapter_follow contact)
+// ===========================================================================
 var _joinChapter = '';
 function openJoin(chapterName, loc, emoji) {
   _joinChapter = chapterName;
