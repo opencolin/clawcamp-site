@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.3.0 — On-Site RSVP, Real Profiles, and Storage
+
+- rsvps table (migration 0004) + a submit-rsvp service-role Edge Function with a
+  honeypot field; raw anon inserts are rejected — the Edge Function is the only
+  writer.
+- Inline on-site RSVP form on the event detail page with a live attendee count
+  (a rsvp_count SECURITY DEFINER RPC, so the roster table stays unreadable),
+  Add-to-Calendar, and a post-RSVP invite link that carries UTM/ref attribution.
+  Luma is retained as the secondary RSVP action.
+- profiles table (migration 0005) keyed to auth.users, with a citext UNIQUE
+  username column replacing the old contacts.title username hack. The table is
+  kept intentionally PII-free.
+- One `media` Storage bucket with per-user-folder RLS (an object's path prefix
+  must equal auth.uid()) plus size/mime validation, wired into the dashboard
+  photo upload.
+- UTM/ref capture on contact-form inserts (js/supabase.js): utm_source,
+  utm_medium, utm_campaign, and ref are stamped onto every new contact row.
+  Migration 0005 adds these four columns to the `contacts` table.
+- rls-probe extended (scripts/rls-probe.sh): anon cannot raw-insert rsvps,
+  cannot read the rsvps roster, cannot write another user's media storage
+  folder, and profiles exposes no private fields.
+
 ## 1.2.0 — Decompose the Event + the Moderation Gate
 
 - events.status moderation enum + event_speakers/event_schedule/event_sponsors

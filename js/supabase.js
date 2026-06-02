@@ -11,7 +11,26 @@
     return val;
   }
 
+  // Marketing attribution pulled off the landing URL's query string. Every new
+  // contact row records where the signup came from. Keys are null when absent
+  // so the merge is non-destructive and rows are still inserted off a bare URL.
+  // These four columns are added to `contacts` by migration 0005 (the migration
+  // is NOT owned by this client slice); pre-0005 the columns are simply absent.
+  function utmParams() {
+    var q = new URLSearchParams(window.location.search);
+    return {
+      utm_source: q.get('utm_source') || null,
+      utm_medium: q.get('utm_medium') || null,
+      utm_campaign: q.get('utm_campaign') || null,
+      ref: q.get('ref') || null
+    };
+  }
+
   function submitToSupabase(data, form) {
+    // Stamp marketing attribution onto every contact insert. UTM/ref keys never
+    // collide with form fields, so a plain merge is safe and never overwrites an
+    // explicitly-set field.
+    Object.assign(data, utmParams());
     // Auto-prepend https:// to URL fields
     ['website', 'linkedin', 'event_link'].forEach(function(k) {
       if (data[k]) data[k] = normalizeUrl(data[k]);

@@ -85,6 +85,34 @@
   .ev-notfound { text-align:center;padding:80px 48px; }
   .ev-notfound h2 { font-size:24px;font-weight:800;margin-bottom:8px; }
   .ev-notfound p { color:var(--muted);margin-bottom:24px; }
+  /* --- Inline RSVP (v1.3) --- */
+  .rsvp-count { display:flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:14px; }
+  .rsvp-count .rsvp-count-dot { width:7px;height:7px;border-radius:50%;background:var(--moss,#2d4a2f);flex-shrink:0; }
+  .rsvp-count b { color:var(--ink);font-weight:500; }
+  .rsvp-form { display:flex;flex-direction:column;gap:10px;margin-bottom:14px; }
+  .rsvp-form input[type=text],.rsvp-form input[type=email] { width:100%;padding:11px 13px;border:1px solid var(--sand);border-radius:8px;font-size:14px;font-family:inherit;background:white;color:var(--ink);box-sizing:border-box; }
+  .rsvp-form input:focus { outline:none;border-color:var(--rust); }
+  .rsvp-form button { padding:12px 16px;border:none;border-radius:8px;background:var(--rust);color:white;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;transition:background 0.15s; }
+  .rsvp-form button:hover { background:#a8420a; }
+  .rsvp-form button:disabled { opacity:0.6;cursor:default; }
+  .rsvp-hp { position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden; }
+  .rsvp-note { font-size:12px;color:var(--muted);line-height:1.4;margin-bottom:12px; }
+  .rsvp-note.err { color:#c62828; }
+  .rsvp-confirm { display:flex;align-items:center;gap:8px;padding:12px 14px;border-radius:8px;background:var(--moss-light,#eaf0ea);color:var(--moss,#2d4a2f);font-size:14px;font-weight:700;margin-bottom:14px; }
+  .rsvp-cal { margin-bottom:14px; }
+  .rsvp-cal-label { font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:8px; }
+  .rsvp-cal-links { display:flex;flex-wrap:wrap;gap:8px; }
+  .rsvp-cal-links a { flex:1;min-width:88px;text-align:center;padding:9px 10px;border:1px solid var(--sand);border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;color:var(--ink);transition:border-color 0.15s; }
+  .rsvp-cal-links a:hover { border-color:var(--ink); }
+  .rsvp-invite { margin-top:16px;padding-top:16px;border-top:1px solid var(--cream); }
+  .rsvp-invite h5 { font-size:13px;font-weight:700;margin-bottom:4px; }
+  .rsvp-invite p { font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.4; }
+  .rsvp-invite-row { display:flex;gap:8px;margin-bottom:10px; }
+  .rsvp-invite-row input { flex:1;padding:9px 11px;border:1px solid var(--sand);border-radius:8px;font-size:12px;font-family:'DM Mono',monospace;background:var(--cream);color:var(--ink);box-sizing:border-box; }
+  .rsvp-invite-row button { padding:9px 14px;border:1px solid var(--ink);border-radius:8px;background:var(--ink);color:white;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap; }
+  .rsvp-invite-share { display:flex;gap:8px; }
+  .rsvp-invite-share a { flex:1;text-align:center;padding:8px 10px;border:1px solid var(--sand);border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;color:var(--ink);transition:border-color 0.15s; }
+  .rsvp-invite-share a:hover { border-color:var(--ink); }
   @media (max-width:768px) {
     .ev-hero { grid-template-columns:1fr;padding:24px 20px 0; }
     .ev-hero-image { order:-1; }
@@ -281,6 +309,273 @@ function loadEvent() {
 function showNotFound() {
   document.getElementById('ev-loading').style.display = 'none';
   document.getElementById('ev-notfound').style.display = '';
+}
+
+// ===========================================================================
+// Inline on-site RSVP (v1.3) — additive to the existing Luma CTAs.
+// ===========================================================================
+// CONTRACT (owned + documented by the rsvp-table-and-edge-function slice):
+//   - submit:  POST {SUPABASE_URL}/functions/v1/submit-rsvp  with the same
+//              header shape submit-event uses (apikey + Bearer + JSON). Body
+//              carries event_id, name, email, status:'going', the honeypot
+//              field `website`, and UTM/ref attribution. Server replies
+//              { ok:true } on a fresh RSVP, { ok:true, already:true } when the
+//              email is already on the list. A bot that fills `website` gets a
+//              silent fake-success (mirrors submit-event's honeypot).
+//   - count:   POST {SUPABASE_URL}/rest/v1/rpc/rsvp_count  body { event_id } ->
+//              a bare integer. It's a SECURITY DEFINER RPC (anon may EXECUTE)
+//              precisely so anon never reads the PII roster.
+// GRACEFUL FALLBACK (hard requirement): the backend may not be deployed yet.
+//   Every network/4xx/5xx path keeps the Luma CTAs clickable and never blanks
+//   the page — the count simply renders nothing and the form surfaces a small
+//   inline note pointing at Luma. All values are rendered via $()/textContent/
+//   setAttribute — never innerHTML — preserving the file's hard XSS rule.
+
+// Pad to 2 digits for UTC calendar timestamps.
+function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+// Format a Date as an iCal/Google UTC basic timestamp: YYYYMMDDTHHMMSSZ.
+function calUtc(d) {
+  return d.getUTCFullYear() + pad2(d.getUTCMonth() + 1) + pad2(d.getUTCDate()) +
+    'T' + pad2(d.getUTCHours()) + pad2(d.getUTCMinutes()) + pad2(d.getUTCSeconds()) + 'Z';
+}
+
+// All-day basic date (YYYYMMDD), used when only ev.event_date is known.
+function calDay(d) {
+  return d.getUTCFullYear() + pad2(d.getUTCMonth() + 1) + pad2(d.getUTCDate());
+}
+
+// Escape a value for inclusion in an iCalendar property (RFC 5545): backslash,
+// semicolon, comma, and newlines. The .ics is downloaded, never rendered, but
+// we still keep event-supplied strings inert inside it.
+function icsEscape(val) {
+  return String(val == null ? '' : val)
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\r\n|\r|\n/g, '\\n');
+}
+
+// Resolve an event's calendar window. Returns { allDay, start, end } as Date
+// objects in UTC. ev.time_range (e.g. "6:00 PM – 9:00 PM") has no reliable
+// timezone, so we treat it as opaque and fall back to an all-day range keyed
+// off ev.event_date — guarding for a missing/garbage date.
+function calRange(ev) {
+  var base = ev.event_date && /^\d{4}-\d{2}-\d{2}/.test(ev.event_date)
+    ? new Date(ev.event_date + 'T00:00:00Z') : null;
+  if (!base || isNaN(base.getTime())) return null;
+  var next = new Date(base.getTime() + 24 * 60 * 60 * 1000);
+  return { allDay: true, start: base, end: next };
+}
+
+// Build the "Add to calendar" control (Google link + downloadable .ics) from
+// ev fields. All anchors via $()/setAttribute; the ICS is a Blob object URL.
+function buildAddToCalendar(ev) {
+  var range = calRange(ev);
+  if (!range) return null; // no usable date -> no calendar control
+
+  var wrap = $('div', 'rsvp-cal');
+  wrap.appendChild($('div', 'rsvp-cal-label', 'Add to calendar'));
+  var links = $('div', 'rsvp-cal-links');
+
+  var loc = [ev.venue_name, ev.location].filter(Boolean).join(', ');
+  var details = ev.link ? ('RSVP / details: ' + ev.link) : '';
+  var dateParam = range.allDay
+    ? (calDay(range.start) + '/' + calDay(range.end))
+    : (calUtc(range.start) + '/' + calUtc(range.end));
+
+  // Google Calendar — query params are URL-encoded, not HTML.
+  var g = 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+    '&text=' + encodeURIComponent(ev.name || 'ClawCamp event') +
+    '&dates=' + dateParam +
+    (details ? '&details=' + encodeURIComponent(details) : '') +
+    (loc ? '&location=' + encodeURIComponent(loc) : '');
+  var gA = $('a', null, 'Google'); gA.href = g; gA.target = '_blank'; gA.rel = 'noopener';
+  links.appendChild(gA);
+
+  // Apple / .ics — assembled as escaped iCalendar text, offered as a Blob.
+  var dtLines = range.allDay
+    ? ['DTSTART;VALUE=DATE:' + calDay(range.start), 'DTEND;VALUE=DATE:' + calDay(range.end)]
+    : ['DTSTART:' + calUtc(range.start), 'DTEND:' + calUtc(range.end)];
+  var ics = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//ClawCamp//Events//EN',
+    'CALSCALE:GREGORIAN', 'BEGIN:VEVENT',
+    'UID:' + icsEscape((ev.id != null ? ev.id : 'event') + '@claw.camp'),
+    'DTSTAMP:' + calUtc(new Date())
+  ].concat(dtLines).concat([
+    'SUMMARY:' + icsEscape(ev.name || 'ClawCamp event'),
+    loc ? 'LOCATION:' + icsEscape(loc) : null,
+    details ? 'DESCRIPTION:' + icsEscape(details) : null,
+    'END:VEVENT', 'END:VCALENDAR'
+  ]).filter(Boolean).join('\r\n');
+
+  var icsA = $('a', null, 'Apple / .ics');
+  try {
+    var blob = new Blob([ics], { type: 'text/calendar' });
+    icsA.href = URL.createObjectURL(blob);
+  } catch (e) {
+    icsA.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics);
+  }
+  icsA.setAttribute('download', 'clawcamp-event.ics');
+  links.appendChild(icsA);
+
+  wrap.appendChild(links);
+  return wrap;
+}
+
+// Reveal the post-RSVP invite-a-friend surface. Council notes: attribution
+// (UTM + ref) must arrive WITH this first share surface so early shares are
+// trackable. The K-factor/leaderboard is explicitly out of scope here.
+function buildInvite(ev) {
+  var box = $('div', 'rsvp-invite');
+  box.appendChild($('h5', null, 'Bring a friend 🦞'));
+  box.appendChild($('p', null, 'Share your invite link — RSVPs from it are credited to you.'));
+
+  // Prefilled, attributable share URL back to this event.
+  var url = SITE_ORIGIN + '/events/detail?id=' + encodeURIComponent(ev.id != null ? ev.id : '') +
+    '&utm_source=invite&utm_medium=share&utm_campaign=rsvp&ref=' +
+    encodeURIComponent('e' + (ev.id != null ? ev.id : ''));
+
+  var row = $('div', 'rsvp-invite-row');
+  var field = $('input'); field.type = 'text'; field.readOnly = true; field.value = url;
+  field.setAttribute('aria-label', 'Invite link');
+  field.onclick = function(){ field.select(); };
+  var copyBtn = $('button', null, 'Copy');
+  copyBtn.type = 'button';
+  copyBtn.onclick = function() {
+    function done(){ copyBtn.textContent = 'Copied'; setTimeout(function(){ copyBtn.textContent = 'Copy'; }, 1800); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(done).catch(function(){ field.select(); });
+    } else { field.select(); }
+  };
+  row.appendChild(field); row.appendChild(copyBtn);
+  box.appendChild(row);
+
+  // Pre-baked share anchors carrying the same attributed URL.
+  var subject = 'Join me at ' + (ev.name || 'this ClawCamp event');
+  var share = $('div', 'rsvp-invite-share');
+  var mail = $('a', null, 'Email');
+  mail.href = 'mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(subject + ': ' + url);
+  var x = $('a', null, 'X');
+  x.href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(subject) + '&url=' + encodeURIComponent(url);
+  x.target = '_blank'; x.rel = 'noopener';
+  var wa = $('a', null, 'WhatsApp');
+  wa.href = 'https://wa.me/?text=' + encodeURIComponent(subject + ' ' + url);
+  wa.target = '_blank'; wa.rel = 'noopener';
+  share.appendChild(mail); share.appendChild(x); share.appendChild(wa);
+  box.appendChild(share);
+  return box;
+}
+
+// Build the inline RSVP block into the sidebar CTA card. Renders ABOVE the
+// existing Luma CTA, which stays in place as a secondary action. For external
+// events the Luma link is the natural primary ticketing action and the inline
+// form acts as a lightweight "notify me" — but both always render.
+function buildRsvp(ev, isPast, cta) {
+  if (ev.id == null || isPast) return; // RSVP only makes sense for a real, upcoming event
+  var isExternal = ev.is_external === true;
+
+  // Container inserted at the TOP of the CTA stack (before the Luma link).
+  var box = $('div', 'rsvp-box');
+
+  // --- Live attendee count (best-effort; renders nothing on failure) -------
+  var countEl = $('div', 'rsvp-count');
+  fetch(SUPABASE_URL + '/rest/v1/rpc/rsvp_count', {
+    method: 'POST',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event_id: ev.id })
+  }).then(function(r){ return r.ok ? r.json() : null; }).then(function(n) {
+    var num = typeof n === 'number' ? n : (n && typeof n.count === 'number' ? n.count : null);
+    if (num == null || isNaN(num) || num <= 0) return; // no count -> render nothing
+    countEl.appendChild($('span', 'rsvp-count-dot'));
+    var line = $('span'); line.appendChild($('b', null, String(num)));
+    line.appendChild(document.createTextNode(' going'));
+    countEl.appendChild(line);
+    box.insertBefore(countEl, box.firstChild);
+  }).catch(function(){ /* backend absent — never block the page */ });
+
+  // --- Email-capture form (primary on-site CTA) ----------------------------
+  var form = $('form', 'rsvp-form');
+  form.setAttribute('novalidate', 'novalidate');
+  var nameIn = $('input'); nameIn.type = 'text'; nameIn.name = 'name'; nameIn.placeholder = 'Your name'; nameIn.autocomplete = 'name';
+  var emailIn = $('input'); emailIn.type = 'email'; emailIn.name = 'email'; emailIn.placeholder = 'you@email.com'; emailIn.required = true; emailIn.autocomplete = 'email';
+  // Honeypot — must be named exactly 'website' to match the Edge Function's
+  // silent-drop contract. Visually hidden, off the tab order, no autofill.
+  var hp = $('input', 'rsvp-hp'); hp.type = 'text'; hp.name = 'website'; hp.setAttribute('autocomplete', 'off'); hp.tabIndex = -1; hp.setAttribute('aria-hidden', 'true');
+  var submit = $('button', null, isExternal ? 'Notify me' : 'RSVP'); submit.type = 'submit';
+  var note = $('div', 'rsvp-note');
+  form.appendChild(nameIn); form.appendChild(emailIn); form.appendChild(hp); form.appendChild(submit);
+
+  // Replace the form (in place) with a confirmation block + reveal invite.
+  function confirmRsvp(message, alreadyOn) {
+    var confirm = $('div', 'rsvp-confirm', message);
+    box.replaceChild(confirm, form);
+    note.textContent = '';
+    box.appendChild(buildInvite(ev));
+    // Optimistic count bump for a fresh RSVP (not for an already-on-list hit).
+    if (!alreadyOn) {
+      var b = countEl.querySelector('b');
+      if (b) { var cur = parseInt(b.textContent, 10); if (!isNaN(cur)) b.textContent = String(cur + 1); }
+    }
+  }
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    var email = emailIn.value.trim();
+    if (!email) { note.className = 'rsvp-note err'; note.textContent = 'Email is required to RSVP.'; return; }
+    submit.disabled = true; note.className = 'rsvp-note'; note.textContent = 'Sending…';
+
+    var payload = {
+      event_id: ev.id,
+      name: nameIn.value.trim(),
+      email: email,
+      status: 'going',
+      website: hp.value, // honeypot — server silently drops if non-empty
+      utm_source: getParam('utm_source'),
+      utm_medium: getParam('utm_medium'),
+      utm_campaign: getParam('utm_campaign'),
+      ref: getParam('ref')
+    };
+
+    // Same POST/parse shape submit-event uses (res.json().then().catch()).
+    fetch(SUPABASE_URL + '/functions/v1/submit-rsvp', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function(res) {
+      return res.json().then(function(data){ return { ok: res.ok, status: res.status, data: data }; })
+        .catch(function(){ return { ok: res.ok, status: res.status, data: null }; });
+    }).then(function(result) {
+      if (result.ok && result.data && result.data.already) {
+        confirmRsvp("You're already on the list ✓", true);
+      } else if (result.ok) {
+        confirmRsvp("You're going ✓", false);
+      } else {
+        // 4xx/5xx from a deployed backend — surface the message, keep Luma.
+        submit.disabled = false;
+        note.className = 'rsvp-note err';
+        var msg = (result.data && result.data.error) ? result.data.error : 'Could not RSVP here.';
+        note.textContent = ev.link ? (msg + ' You can still RSVP on Luma below.') : msg;
+      }
+    }).catch(function() {
+      // Network error / Edge Function not deployed (404). NOT a dead end:
+      // keep the Luma button visible and point the user at it.
+      submit.disabled = false;
+      note.className = 'rsvp-note err';
+      note.textContent = ev.link ? 'On-site RSVP is unavailable right now — use the Luma link below.'
+        : 'On-site RSVP is unavailable right now. Please try again later.';
+    });
+  });
+
+  box.appendChild(form);
+  box.appendChild(note);
+
+  // Add-to-calendar sits with the RSVP control.
+  var cal = buildAddToCalendar(ev);
+  if (cal) box.appendChild(cal);
+
+  // Insert the whole block at the top of the CTA stack (above Luma).
+  cta.insertBefore(box, cta.firstChild);
 }
 
 function renderEvent(ev, dbSpeakers, dbSchedule, dbSponsors) {
@@ -496,6 +791,10 @@ function renderEvent(ev, dbSpeakers, dbSchedule, dbSponsors) {
   var chLink = $('a', 'sidebar-cta-secondary', '🌍 ClawCamp Chapters');
   chLink.href = '/chapters';
   cta.appendChild(chLink);
+  // Inline on-site RSVP (v1.3): additive primary CTA inserted ABOVE the Luma
+  // link. Degrades gracefully — the Luma CTAs above stay clickable if the RSVP
+  // backend (submit-rsvp / rsvp_count) isn't deployed yet.
+  buildRsvp(ev, isPast, cta);
   ctaCard.appendChild(cta);
   sidebar.appendChild(ctaCard);
 
