@@ -27,7 +27,7 @@ Until v1.0.0 ships, treat `contacts` as compromised.
 
 | Version | Slug | State | Branch | Worktree | Workflow runId |
 |---------|------|-------|--------|----------|----------------|
-| 1.0.0 | lockdown-and-versioning | 🟡 building | `release/1.0.0-lockdown-and-versioning` | `../clawcamp-worktrees/lockdown-and-versioning` | _(launching)_ |
+| 1.0.0 | lockdown-and-versioning | 🟡 building | `release/1.0.0-lockdown-and-versioning` | `../clawcamp-worktrees/lockdown-and-versioning` | `wf_daa7adcd-bde` |
 | 1.1.0 | chapters-are-real | ⏳ planned | `release/1.1.0-chapters-are-real` | `../clawcamp-worktrees/chapters-are-real` | — |
 | 1.2.0 | structured-content-and-moderation | ⏳ planned | `release/1.2.0-structured-content-and-moderation` | `../clawcamp-worktrees/structured-content-and-moderation` | — |
 | 1.3.0 | rsvp-and-identity | ⏳ planned | `release/1.3.0-rsvp-and-identity` | `../clawcamp-worktrees/rsvp-and-identity` | — |
@@ -63,7 +63,7 @@ git worktree list
 | Workflow | runId | script |
 |----------|-------|--------|
 | PM Council | `wf_3977ba4a-338` | `docs/orchestration/workflow-scripts/pm-council.js` |
-| v1.0.0 build | _(recorded on launch below)_ | `docs/orchestration/workflow-scripts/release-builder.js` |
+| v1.0.0 build | `wf_daa7adcd-bde` | `docs/orchestration/workflow-scripts/release-builder.js` |
 
 ## Tick log (orchestrator heartbeat, ~60s)
 
@@ -71,3 +71,4 @@ git worktree list
 - t1 — council in Propose phase (5/11); rescheduled.
 - t2 — council DONE. Wrote ROADMAP + 7 plan docs + council record. Created 7
   worktrees/branches, pushed all. Launching v1.0.0 build workflow.
+- t3 — v1.0.0 build workflow `wf_daa7adcd-bde` launched (worktree-isolated producers). Rescheduled tick.
