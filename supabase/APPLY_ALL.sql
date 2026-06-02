@@ -2605,3 +2605,10 @@ END $$;
 --   anon lockdown (and the 0006 no-self-promote guarantee) is preserved exactly.
 
 -- ### END 0009_indexes_and_provisioning.sql
+
+-- ###########################################################################
+-- ### BEGIN 0010_chapter_name_fixes.sql
+-- ###########################################################################
+UPDATE public.chapters SET name = 'ClawCamp San Francisco' WHERE slug = 'sf';
+UPDATE public.chapters SET name = 'Online Events'          WHERE slug = 'online';
+-- ### END 0010_chapter_name_fixes.sql
