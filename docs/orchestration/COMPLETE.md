@@ -99,3 +99,24 @@ these in order in the Supabase project (`mrnccntqmkxjazznejfc`) + Vercel:
 - Per-release scope + checklists: `docs/releases/vX.Y-<slug>.md`.
 - Reusable builder: `docs/orchestration/workflow-scripts/release-builder-TEMPLATE.js`
   (edit the two path consts, launch inline).
+
+
+## ⚠️ POST-SHIP HOTFIX (deploy was failing)
+
+After v2.0.0 merged, **Vercel deploys silently started failing** (last good:
+`ea6f401`), so the site froze on an old build and `/events` showed only the 2
+DB events (the additive-render fix + everything since v1.2 weren't live).
+
+Two causes, both fixed in `b3327dc`:
+1. v2.0.0 added a root `package-lock.json`; combined with the v1.2 `package.json`
+   it made Vercel auto-detect a Node project and run a failing install/build.
+   **Fix:** `.vercelignore` excludes package.json, package-lock.json,
+   playwright.config.js, tests/, supabase/, .github/, docs/ → pure static deploy.
+2. `vercel.json` had a non-standard `"//csp"` comment key under `$schema`, which
+   can fail config validation. **Fix:** removed `$schema` + the `//csp` key; kept
+   cleanUrls, redirects, and the CSP/security headers.
+
+LESSON (#6): a static site's deploy is only "shipped" if it actually deploys —
+verify the live deploy state, not just the git merge. Adding build-tooling files
+(package.json/lockfile) to a zero-config static repo silently flips Vercel into
+build mode. Keep tooling out of the deploy via `.vercelignore`.

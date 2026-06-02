@@ -92,3 +92,4 @@ git worktree list
 - t16 — v1.5.0 build wf_39dcc88e-73d DONE (5 slices + send-recap function). Merged 369420c, VERSION 1.5.0. 6/7 shipped. Launching FINAL v2.0.0.
 - t17 — 6/7 shipped (v1.5.0 369420c). FINAL v2.0.0 build wf_4706ec00-849 launched. On completion: ship + write COMPLETE.md + stop ticking.
 - t18 — FINAL v2.0.0 build wf_4706ec00-849 DONE. Kept static event list + chapters fallback (events table RLS-locked, only 2 upcoming — avoided live regression). Shipped d6b951f, VERSION 2.0.0. Wrote COMPLETE.md with server-side apply checklist. 7/7 SHIPPED — orchestration complete, ticking stopped.
+- t19 — HOTFIX: Vercel deploys were FAILING since the v2.0.0 merge (package-lock.json + invalid vercel.json //csp key) → site frozen, /events showed only 2 DB events. Fixed with .vercelignore (static-only) + cleaned vercel.json (b3327dc). Also made events/index.html renderEvents additive (was wiping static rows). Deploy now SUCCESS; /events shows 16 upcoming. Goal MET.
