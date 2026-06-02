@@ -31,8 +31,8 @@ Until v1.0.0 ships, treat `contacts` as compromised.
 | 1.1.0 | chapters-are-real | ✅ shipped (766c70a) | `release/1.1.0-chapters-are-real` | `../clawcamp-worktrees/chapters-are-real` | `wf_a30d2f0f-171` |
 | 1.2.0 | structured-content-and-moderation | ✅ shipped (854f8ae) | `release/1.2.0-structured-content-and-moderation` | `../clawcamp-worktrees/structured-content-and-moderation` | `wf_62e3c1c6-bbf` |
 | 1.3.0 | rsvp-and-identity | ✅ shipped (b10abed) | `release/1.3.0-rsvp-and-identity` | `../clawcamp-worktrees/rsvp-and-identity` | `wf_5aff7bd6-cc1` |
-| 1.4.0 | rbac-and-captains-console | 🟡 building | `release/1.4.0-rbac-and-captains-console` | `../clawcamp-worktrees/rbac-and-captains-console` | `wf_434e562b-968` |
-| 1.5.0 | recaps-and-living-archive | ⏳ planned | `release/1.5.0-recaps-and-living-archive` | `../clawcamp-worktrees/recaps-and-living-archive` | — |
+| 1.4.0 | rbac-and-captains-console | ✅ shipped (0568b73) | `release/1.4.0-rbac-and-captains-console` | `../clawcamp-worktrees/rbac-and-captains-console` | `wf_434e562b-968` |
+| 1.5.0 | recaps-and-living-archive | 🟡 building | `release/1.5.0-recaps-and-living-archive` | `../clawcamp-worktrees/recaps-and-living-archive` | — |
 | 2.0.0 | self-running-platform | ⏳ planned | `release/2.0.0-self-running-platform` | `../clawcamp-worktrees/self-running-platform` | — |
 
 State legend: `planned` · `building` · `in-review` · `shipped` · `blocked`
@@ -87,3 +87,4 @@ git worktree list
 - t11 — v1.2.0 shipped (76aec98). v1.3.0 build wf_5aff7bd6-cc1 launched (direct-write template). Reschedule.
 - t12 — v1.3.0 build wf_5aff7bd6-cc1 DONE (5 slices; agent self-bumped VERSION 1.3.0). Clean merge b10abed. 4/7 shipped. Launching v1.4.0.
 - t13 — 4/7 shipped. v1.4.0 build wf_434e562b-968 launched (direct-write template). Reschedule.
+- t14 — v1.4.0 build wf_434e562b-968 DONE (4 slices; captains console as modular js/captains-console.{js,css}). Bumped VERSION 1.4.0, merged 0568b73. 5/7 shipped. Launching v1.5.0.
