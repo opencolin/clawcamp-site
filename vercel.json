@@ -1,4 +1,20 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "redirects": [
+    { "source": "/docs/:path*", "destination": "/", "permanent": false },
+    { "source": "/safemode/:path*", "destination": "/", "permanent": false },
+    { "source": "/safemode", "destination": "/", "permanent": false },
+    { "source": "/zusemite/:path*", "destination": "/", "permanent": false },
+    { "source": "/zusemite", "destination": "/", "permanent": false },
+    { "source": "/logo-concepts.html", "destination": "/", "permanent": false },
+    { "source": "/logo-concepts", "destination": "/", "permanent": false },
+    { "source": "/ClawCamp-RSVP-PRD.md", "destination": "/", "permanent": false },
+    { "source": "/ClawCamp-RSVP-PRD", "destination": "/", "permanent": false },
+    { "source": "/FINAL-PRD.md", "destination": "/", "permanent": false },
+    { "source": "/FINAL-PRD", "destination": "/", "permanent": false },
+    { "source": "/HackMeBaby-PRD.md", "destination": "/", "permanent": false },
+    { "source": "/HackMeBaby-PRD", "destination": "/", "permanent": false }
+  ]
 }

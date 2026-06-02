@@ -679,6 +679,7 @@
 
 <div id="site-footer"></div>
 <script src="/js/nav.js"></script>
+<script src="/js/config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106.2/dist/umd/supabase.js" integrity="sha384-m/8UHFJHeU6nrCKP2hBnAseuvAKUmLF+8e5bWos5CJL023vuxX7kiVL5t8yjsJhV" crossorigin="anonymous"></script>
 <script src="/js/auth.js"></script>
 <script>
@@ -713,12 +714,37 @@
   var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ybmNjbnRxbWt4amF6em5lamZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMDA3NTksImV4cCI6MjA5MDc3Njc1OX0.T6oFTtYiFTsx6ojuogpZFXAS7tN5-dPzwvmY5V2xFGI';
   var dashEmail = '';
 
+  // Session-bound fetch to the contacts table. Since the v1.0.0 lockdown
+  // (supabase/migrations/0001_baseline.sql) REVOKEs anon SELECT/UPDATE on
+  // contacts, every read/write here MUST carry the logged-in user's JWT, not
+  // the anon key, so RLS can match the row's email to auth.jwt()->>'email'.
+  // Keeps 'apikey' as the anon key (PostgREST requires it); 'Authorization'
+  // carries the user's access_token. Resolves to null if no session exists.
+  function dashAuthFetch(url, opts) {
+    opts = opts || {};
+    return clawAuth.getSession().then(function(res) {
+      var session = res && res.data && res.data.session;
+      if (!session) return null; // no session -> caller must no-op
+      var headers = {};
+      var src = opts.headers || {};
+      for (var k in src) { if (src.hasOwnProperty(k)) headers[k] = src[k]; }
+      headers.apikey = SUPABASE_ANON_KEY;
+      headers.Authorization = 'Bearer ' + session.access_token;
+      var merged = {};
+      for (var o in opts) { if (opts.hasOwnProperty(o)) merged[o] = opts[o]; }
+      merged.headers = headers;
+      return fetch(url, merged);
+    });
+  }
+
   // ---------- Profile ----------
   function loadProfile(email) {
-    fetch(SUPABASE_URL + '/rest/v1/contacts?email=eq.' + encodeURIComponent(email) +
+    // Reads own contact row — needs the user's session token now that anon
+    // SELECT on contacts is revoked (RLS returns only the caller's own row).
+    dashAuthFetch(SUPABASE_URL + '/rest/v1/contacts?email=eq.' + encodeURIComponent(email) +
       '&select=name,bio,linkedin,website,title&limit=1', {
-      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
-    }).then(function(r){ return r.json(); })
+      headers: {}
+    }).then(function(r){ return r ? r.json() : []; })
     .then(function(rows) {
       if (!rows.length) return;
       var row = rows[0];
@@ -771,10 +797,16 @@
     avail.textContent = '...';
     avail.className = 'username-avail';
     _usernameTimer = setTimeout(function() {
-      // Check if username is taken (stored in contacts.title field as username: prefix)
-      fetch(SUPABASE_URL + '/rest/v1/contacts?title=eq.username:' + encodeURIComponent(val) + '&select=id&limit=1', {
-        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
-      }).then(function(r){ return r.json(); })
+      // Check if username is taken (stored in contacts.title field as username: prefix).
+      // contacts SELECT is no longer anon-readable after the lockdown, so this
+      // availability check must run with the user's session token too. Under
+      // the contacts_select_own RLS policy a logged-in user only ever sees
+      // their OWN row, so a "taken" handle on someone else's row reads back as
+      // available here — accepted as a known limitation of the title='username:'
+      // hack until a proper unique-username table lands (roadmap v1.3 identity).
+      dashAuthFetch(SUPABASE_URL + '/rest/v1/contacts?title=eq.username:' + encodeURIComponent(val) + '&select=id&limit=1', {
+        headers: {}
+      }).then(function(r){ return r ? r.json() : []; })
       .then(function(rows) {
         if (rows.length === 0) {
           avail.textContent = '✓ Available';
@@ -807,17 +839,19 @@
     if (name) body.name = name;
     if (username) body.title = 'username:' + username; // store username in title field with prefix
 
-    fetch(SUPABASE_URL + '/rest/v1/contacts?email=eq.' + encodeURIComponent(dashEmail), {
+    // Session-bound PATCH: the Authorization header carries the logged-in
+    // user's JWT (not the anon key), so the contacts_update_own RLS policy
+    // only lets the caller update their OWN row. The ?email=eq. filter is now
+    // belt-and-suspenders — RLS, not the query string, enforces ownership.
+    dashAuthFetch(SUPABASE_URL + '/rest/v1/contacts?email=eq.' + encodeURIComponent(dashEmail), {
       method: 'PATCH',
       headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal'
       },
       body: JSON.stringify(body)
     }).then(function(r) {
-      if (r.ok) {
+      if (r && r.ok) {
         statusEl.textContent = 'Profile saved ✓';
         statusEl.style.color = '#2d4a2f';
         if (name) {
@@ -841,10 +875,11 @@
   };
 
   function loadPrefs(email) {
-    fetch(SUPABASE_URL + '/rest/v1/contacts?email=eq.' + encodeURIComponent(email) + '&select=sub_events,sub_newsletter,sub_sponsors&limit=1', {
-      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+    // Own email prefs — session token required (anon SELECT on contacts revoked).
+    dashAuthFetch(SUPABASE_URL + '/rest/v1/contacts?email=eq.' + encodeURIComponent(email) + '&select=sub_events,sub_newsletter,sub_sponsors&limit=1', {
+      headers: {}
     })
-    .then(function(r) { return r.json(); })
+    .then(function(r) { return r ? r.json() : []; })
     .then(function(rows) {
       if (rows.length) {
         var row = rows[0];
@@ -865,18 +900,18 @@
     };
     var statusEl = document.getElementById('pref-status');
     statusEl.textContent = 'Saving...';
-    fetch(SUPABASE_URL + '/rest/v1/contacts?email=eq.' + encodeURIComponent(dashEmail), {
+    // Session-bound PATCH (see saveProfile): RLS contacts_update_own confines
+    // the write to the caller's own row via the JWT email claim.
+    dashAuthFetch(SUPABASE_URL + '/rest/v1/contacts?email=eq.' + encodeURIComponent(dashEmail), {
       method: 'PATCH',
       headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal'
       },
       body: JSON.stringify(body)
     })
     .then(function(r) {
-      statusEl.textContent = r.ok ? 'Preferences saved' : 'Error saving preferences';
+      statusEl.textContent = (r && r.ok) ? 'Preferences saved' : 'Error saving preferences';
       setTimeout(function() { statusEl.textContent = ''; }, 2000);
     })
     .catch(function() {

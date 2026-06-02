@@ -1,0 +1,11 @@
+# robots.txt for claw.camp
+# Crawlers welcome — index the public site.
+
+User-agent: *
+Allow: /
+
+# Internal / scratch paths that should not be indexed.
+Disallow: /dashboard/
+Disallow: /logo-concepts.html
+
+Sitemap: https://claw.camp/sitemap.xml

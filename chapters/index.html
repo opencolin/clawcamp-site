@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Chapters — ClawCamp</title>
 <meta name="description" content="Find a ClawCamp chapter near you — or start one in your city.">
+<meta property="og:title" content="Chapters — ClawCamp">
+<meta property="og:description" content="Find a ClawCamp chapter near you — or start one in your city.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://claw.camp/chapters">
+<meta property="og:image" content="https://claw.camp/images/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Chapters — ClawCamp">
+<meta name="twitter:description" content="Find a ClawCamp chapter near you — or start one in your city.">
+<meta name="twitter:image" content="https://claw.camp/images/og-default.png">
+<link rel="canonical" href="https://claw.camp/chapters">
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -332,12 +342,13 @@
 </div>
 
 <div id="site-footer"></div>
+<script src="/js/config.js"></script>
 <script src="/js/nav.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106.2/dist/umd/supabase.js" integrity="sha384-m/8UHFJHeU6nrCKP2hBnAseuvAKUmLF+8e5bWos5CJL023vuxX7kiVL5t8yjsJhV" crossorigin="anonymous"></script>
 <script src="/js/auth.js"></script>
 <script>
-var SUPABASE_URL = 'https://mrnccntqmkxjazznejfc.supabase.co';
-var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ybmNjbnRxbWt4amF6em5lamZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMDA3NTksImV4cCI6MjA5MDc3Njc1OX0.T6oFTtYiFTsx6ojuogpZFXAS7tN5-dPzwvmY5V2xFGI';
+var SUPABASE_URL = window.CLAWCAMP_CONFIG.SUPABASE_URL;
+var SUPABASE_KEY = window.CLAWCAMP_CONFIG.SUPABASE_ANON_KEY;
 
 // Load follower counts (contacts with form_type=chapter_follow + city)
 (function loadFollowers() {

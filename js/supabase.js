@@ -27,32 +27,25 @@
         'Content-Type': 'application/json',
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-        'Prefer': 'return=representation'
+        // return=minimal so the insert response body is EMPTY. The row's
+        // verification_token / magic_link_token must NEVER cross the wire to
+        // an anon client (this was the live token-leak — see
+        // supabase/migrations/0001_baseline.sql).
+        'Prefer': 'return=minimal'
       },
       body: JSON.stringify(data)
     })
     .then(function (res) {
       if (res.ok) {
-        return res.json();
+        // return=minimal -> no body to read. The verification email is now
+        // sent SERVER-SIDE: the send-verification edge function triggers off
+        // the INSERT and reads verification_token from the row inside the DB,
+        // so the token is never exposed to the browser. (Edge function source
+        // lives Supabase-side, not in this repo.)
+        window.location.href = '/welcome';
       } else {
         return res.text().then(function (text) { throw new Error(text); });
       }
-    })
-    .then(function (rows) {
-      var row = Array.isArray(rows) ? rows[0] : rows;
-      // Fire-and-forget verification email
-      if (row && row.verification_token && row.email) {
-        fetch(SUPABASE_URL + '/functions/v1/send-verification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: row.email,
-            name: row.name || '',
-            token: row.verification_token
-          })
-        }).catch(function () {}); // silent fail — don't block redirect
-      }
-      window.location.href = '/welcome';
     })
     .catch(function (err) {
       console.error('Form submission error:', err);
