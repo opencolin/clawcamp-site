@@ -393,6 +393,138 @@ nav a:hover { color: var(--ink); }
   text-decoration: none;
 }
 
+/* ---- Newsletter Strip ---- */
+.newsletter-strip {
+  background: var(--rust);
+  padding: 20px 48px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.newsletter-label {
+  font-weight: 700;
+  font-size: 16px;
+  color: white;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.newsletter-form {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-width: 260px;
+  max-width: 440px;
+}
+.newsletter-input {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 14px;
+  background: rgba(255,255,255,0.2);
+  color: white;
+  outline: none;
+}
+.newsletter-input::placeholder { color: rgba(255,255,255,0.65); }
+.newsletter-input:focus { background: rgba(255,255,255,0.3); }
+.newsletter-btn {
+  padding: 10px 20px;
+  background: white;
+  color: var(--rust);
+  border: none;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+.newsletter-btn:hover { opacity: 0.9; }
+.newsletter-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.newsletter-msg {
+  font-size: 13px;
+  font-weight: 600;
+  margin-left: 4px;
+  min-height: 18px;
+}
+
+/* ---- Live / Happening Now badge ---- */
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #d32f2f;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: white;
+  animation: live-pulse 1.4s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}
+
+/* ---- Event Status Banner (event detail pages) ---- */
+.event-status-banner {
+  padding: 12px 48px;
+  background: #d32f2f;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.event-status-banner .live-dot { background: white; }
+
+/* ---- Chapter card ---- */
+.chapter-card {
+  border: 1px solid var(--sand);
+  border-radius: 12px;
+  overflow: hidden;
+  text-decoration: none;
+  color: var(--ink);
+  transition: border-color 0.15s, transform 0.15s;
+  display: flex;
+  flex-direction: column;
+}
+.chapter-card:hover { border-color: var(--rust); transform: translateY(-2px); }
+.chapter-cover {
+  height: 120px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 60%, #16213e 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+}
+.chapter-body { padding: 20px; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.chapter-name { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; }
+.chapter-location { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+.chapter-desc { font-size: 13px; color: var(--muted); line-height: 1.5; flex: 1; }
+.chapter-stats {
+  display: flex;
+  gap: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--cream);
+  margin-top: auto;
+}
+.chapter-stat { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 1px; }
+.chapter-stat strong { font-size: 15px; color: var(--ink); }
+
 /* ---- Shared Layout ---- */
 .main { padding: 0 48px 80px; }
 
@@ -473,4 +605,7 @@ nav a:hover { color: var(--ink); }
   .site-footer { padding: 40px 20px 24px; }
   .footer-inner { flex-direction: column; gap: 32px; }
   .footer-links { flex-direction: column; gap: 32px; }
+  .newsletter-strip { padding: 20px; flex-direction: column; align-items: flex-start; gap: 12px; }
+  .newsletter-form { width: 100%; max-width: 100%; }
+  .event-status-banner { padding: 12px 20px; }
 }

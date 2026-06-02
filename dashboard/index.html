@@ -272,6 +272,96 @@
 
   .dash-footer-space { height: 64px; }
 
+  /* Role badge */
+  .dash-role-badge {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--sand);
+    color: var(--ink);
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+  .dash-role-badge.captain { background: var(--rust); color: white; }
+
+  /* Hero actions */
+  .dash-hero-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+  }
+  .dash-hero-btn { font-size: 14px; padding: 10px 20px; }
+  .dash-hero-sub { font-size: 13px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+
+  /* My Chapters empty state */
+  .dash-empty-msg { font-size: 14px; color: var(--muted); line-height: 1.6; }
+  .dash-empty-msg a { color: var(--rust); }
+
+  /* Profile form */
+  .profile-form { display: flex; flex-direction: column; gap: 28px; max-width: 740px; }
+  .profile-photo-row { display: flex; align-items: flex-start; gap: 20px; }
+  .profile-avatar {
+    width: 72px; height: 72px; border-radius: 50%;
+    background: var(--rust); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 800; flex-shrink: 0;
+    overflow: hidden;
+  }
+  .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .profile-drop-zone {
+    border: 1px dashed var(--sand);
+    border-radius: 8px;
+    padding: 14px 20px;
+    font-size: 14px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .profile-drop-zone:hover { border-color: var(--rust); }
+  .profile-photo-hint { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .profile-fields { display: flex; flex-direction: column; gap: 20px; }
+  .profile-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .profile-field { display: flex; flex-direction: column; gap: 6px; }
+  .profile-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--muted);
+  }
+  .profile-input {
+    padding: 11px 14px;
+    border: 1px solid var(--sand);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--ink);
+    background: white;
+    transition: border-color 0.15s;
+    outline: none;
+    width: 100%;
+  }
+  .profile-input:focus { border-color: var(--rust); }
+  .profile-textarea { resize: vertical; min-height: 80px; }
+  .profile-hint { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .profile-char-count { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+  .username-avail {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 12px; font-weight: 600;
+  }
+  .username-avail.ok { color: #2d4a2f; }
+  .username-avail.taken { color: #c62828; }
+  .profile-save-row { display: flex; align-items: center; gap: 12px; }
+  .profile-save-status { font-size: 13px; font-weight: 600; }
+
+  @media (max-width: 640px) {
+    .profile-field-row { grid-template-columns: 1fr; }
+    .dash-hero-actions { flex-direction: column; }
+  }
+
   /* Error state */
   .dash-error {
     min-height: 60vh;
@@ -331,9 +421,24 @@
 <div id="dash-content" style="display:none;">
 
   <div class="dash-header">
-    <div class="dash-greeting">Welcome back, <em id="dash-name">Camper</em></div>
+    <div class="dash-greeting">Hey, <em id="dash-name">Camper</em> &#128075;</div>
     <div class="dash-email" id="dash-email"></div>
+    <span class="dash-role-badge" id="dash-role-badge">member</span>
     <button class="dash-signout" id="dash-signout">Sign out</button>
+    <div class="dash-hero-actions">
+      <a href="/submit-event" class="btn-dark dash-hero-btn">+ Submit an Event</a>
+      <a href="/chapters" class="btn-outline dash-hero-btn">&#9654; Start a Chapter</a>
+    </div>
+    <p class="dash-hero-sub">Host an Event or Start a Chapter to organise ClawCamp events in your area.</p>
+  </div>
+
+  <!-- My Chapters -->
+  <div class="dash-section">
+    <div class="dash-section-title">&#127758; My Chapters</div>
+    <div id="my-chapters-content">
+      <p class="dash-empty-msg">You&rsquo;re not part of any chapters yet &mdash; <a href="/chapters">search for one to follow</a>, or start your own above.</p>
+      <a href="/chapters" class="btn-outline" style="margin-top:12px;display:inline-block;font-size:13px;padding:8px 18px;">&#128269; Search Chapters to follow</a>
+    </div>
   </div>
 
   <div class="dash-section">
@@ -360,6 +465,13 @@
           <p>Workshops, guides, tutorials, and threads</p>
         </div>
       </a>
+      <a href="/chapters" class="quick-link">
+        <span class="quick-link-icon">&#127758;</span>
+        <div class="quick-link-text">
+          <h3>Chapters</h3>
+          <p>Find your local ClawCamp community</p>
+        </div>
+      </a>
       <a href="/startups" class="quick-link">
         <span class="quick-link-icon">&#128640;</span>
         <div class="quick-link-text">
@@ -367,14 +479,14 @@
           <p>Awards, grants, and sponsor perks</p>
         </div>
       </a>
-      <a href="/host" class="quick-link">
+      <a href="/submit-event" class="quick-link">
         <span class="quick-link-icon">&#128221;</span>
         <div class="quick-link-text">
           <h3>Submit an Event</h3>
           <p>Host your own camp or meetup</p>
         </div>
       </a>
-<a href="/speakers#apply" class="quick-link">
+      <a href="/speakers#apply" class="quick-link">
         <span class="quick-link-icon">&#127908;</span>
         <div class="quick-link-text">
           <h3>Apply to Speak</h3>
@@ -466,6 +578,65 @@
     </div>
   </div>
 
+  <!-- Profile Section -->
+  <div class="dash-section">
+    <div class="dash-section-title">&#128100; Profile</div>
+    <div class="profile-form">
+      <div class="profile-photo-row">
+        <div class="profile-avatar" id="profile-avatar-preview">CL</div>
+        <div class="profile-photo-upload">
+          <div class="profile-drop-zone" id="profile-drop-zone" onclick="document.getElementById('profile-photo-input').click()">
+            Drag a photo here, or <span style="color:var(--rust);cursor:pointer;text-decoration:underline">browse</span>
+          </div>
+          <input type="file" id="profile-photo-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none" onchange="handlePhotoSelect(this)">
+          <p class="profile-photo-hint">JPG, PNG, GIF or WebP &middot; up to 5&nbsp;MB &middot; squared automatically</p>
+        </div>
+      </div>
+
+      <div class="profile-fields">
+        <div class="profile-field-row">
+          <div class="profile-field">
+            <label class="profile-label">Display Name</label>
+            <input type="text" id="prof-name" class="profile-input" placeholder="Your full name">
+          </div>
+          <div class="profile-field">
+            <label class="profile-label">Username &mdash; <span style="font-weight:400;text-transform:none;letter-spacing:0">your public @handle &middot; letters and numbers only</span></label>
+            <div style="position:relative">
+              <input type="text" id="prof-username" class="profile-input" placeholder="yourhandle"
+                oninput="checkUsername(this.value)" pattern="[a-zA-Z0-9]+">
+              <span class="username-avail" id="username-avail"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-field">
+          <label class="profile-label">Bio &mdash; <span style="font-weight:400;text-transform:none;letter-spacing:0">shown on chapter pages</span></label>
+          <textarea id="prof-bio" class="profile-input profile-textarea" rows="3"
+            placeholder="A short bio shown on chapter pages..." maxlength="280"
+            oninput="document.getElementById('bio-count').textContent=this.value.length"></textarea>
+          <span class="profile-char-count"><span id="bio-count">0</span> / 280 characters</span>
+        </div>
+
+        <div class="profile-field-row">
+          <div class="profile-field">
+            <label class="profile-label">LinkedIn URL</label>
+            <input type="url" id="prof-linkedin" class="profile-input" placeholder="https://linkedin.com/in/yourprofile">
+          </div>
+          <div class="profile-field">
+            <label class="profile-label">Website URL</label>
+            <input type="text" id="prof-website" class="profile-input" placeholder="yourwebsite.com">
+            <span class="profile-hint">Just the domain is fine &mdash; we&rsquo;ll add https:// for you</span>
+          </div>
+        </div>
+
+        <div class="profile-save-row">
+          <button class="btn-dark" onclick="saveProfile()" id="profile-save-btn">Save Profile</button>
+          <span class="profile-save-status" id="profile-save-status"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="dash-section">
     <div class="dash-section-title">Email Preferences</div>
     <div class="pref-list" id="pref-list">
@@ -508,7 +679,7 @@
 
 <div id="site-footer"></div>
 <script src="/js/nav.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106.2/dist/umd/supabase.js" integrity="sha384-m/8UHFJHeU6nrCKP2hBnAseuvAKUmLF+8e5bWos5CJL023vuxX7kiVL5t8yjsJhV" crossorigin="anonymous"></script>
 <script src="/js/auth.js"></script>
 <script>
 (function() {
@@ -541,6 +712,133 @@
   var SUPABASE_URL = 'https://mrnccntqmkxjazznejfc.supabase.co';
   var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ybmNjbnRxbWt4amF6em5lamZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMDA3NTksImV4cCI6MjA5MDc3Njc1OX0.T6oFTtYiFTsx6ojuogpZFXAS7tN5-dPzwvmY5V2xFGI';
   var dashEmail = '';
+
+  // ---------- Profile ----------
+  function loadProfile(email) {
+    fetch(SUPABASE_URL + '/rest/v1/contacts?email=eq.' + encodeURIComponent(email) +
+      '&select=name,bio,linkedin,website,title&limit=1', {
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+    }).then(function(r){ return r.json(); })
+    .then(function(rows) {
+      if (!rows.length) return;
+      var row = rows[0];
+      if (row.name) document.getElementById('prof-name').value = row.name;
+      if (row.bio) {
+        document.getElementById('prof-bio').value = row.bio;
+        document.getElementById('bio-count').textContent = row.bio.length;
+      }
+      if (row.linkedin) document.getElementById('prof-linkedin').value = row.linkedin;
+      if (row.website) document.getElementById('prof-website').value = row.website;
+      // Set avatar initials or photo
+      updateAvatarInitials(row.name || email);
+    }).catch(function(){});
+  }
+
+  function updateAvatarInitials(nameOrEmail) {
+    var el = document.getElementById('profile-avatar-preview');
+    if (!el) return;
+    var parts = nameOrEmail.split(/\s+|@/);
+    var initials = parts.slice(0, 2).map(function(p){ return p[0] || ''; }).join('').toUpperCase();
+    el.textContent = initials || '?';
+  }
+
+  window.handlePhotoSelect = function(input) {
+    var file = input.files && input.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Photo must be under 5MB.');
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var preview = document.getElementById('profile-avatar-preview');
+      var img = document.createElement('img');
+      img.src = e.target.result; // data: URL — user's own file, not remote input
+      img.alt = 'Profile photo';
+      preview.textContent = '';  // clear initials
+      preview.appendChild(img);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  var _usernameTimer;
+  window.checkUsername = function(val) {
+    val = val.replace(/[^a-zA-Z0-9]/g, '');
+    document.getElementById('prof-username').value = val;
+    var avail = document.getElementById('username-avail');
+    if (!val) { avail.textContent = ''; return; }
+    clearTimeout(_usernameTimer);
+    avail.textContent = '...';
+    avail.className = 'username-avail';
+    _usernameTimer = setTimeout(function() {
+      // Check if username is taken (stored in contacts.title field as username: prefix)
+      fetch(SUPABASE_URL + '/rest/v1/contacts?title=eq.username:' + encodeURIComponent(val) + '&select=id&limit=1', {
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+      }).then(function(r){ return r.json(); })
+      .then(function(rows) {
+        if (rows.length === 0) {
+          avail.textContent = '✓ Available';
+          avail.className = 'username-avail ok';
+        } else {
+          avail.textContent = '✗ Taken';
+          avail.className = 'username-avail taken';
+        }
+      }).catch(function(){ avail.textContent = ''; });
+    }, 400);
+  };
+
+  window.saveProfile = function() {
+    if (!dashEmail) return;
+    var name = document.getElementById('prof-name').value.trim();
+    var bio = document.getElementById('prof-bio').value.trim();
+    var linkedin = document.getElementById('prof-linkedin').value.trim();
+    var website = document.getElementById('prof-website').value.trim();
+    var username = document.getElementById('prof-username').value.trim();
+    var statusEl = document.getElementById('profile-save-status');
+    var btn = document.getElementById('profile-save-btn');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    statusEl.textContent = '';
+
+    // Auto-prefix website
+    if (website && !website.startsWith('http')) website = 'https://' + website;
+
+    var body = { bio: bio || null, linkedin: linkedin || null, website: website || null };
+    if (name) body.name = name;
+    if (username) body.title = 'username:' + username; // store username in title field with prefix
+
+    fetch(SUPABASE_URL + '/rest/v1/contacts?email=eq.' + encodeURIComponent(dashEmail), {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(body)
+    }).then(function(r) {
+      if (r.ok) {
+        statusEl.textContent = 'Profile saved ✓';
+        statusEl.style.color = '#2d4a2f';
+        if (name) {
+          var firstName = name.split(' ')[0];
+          document.getElementById('dash-name').textContent = firstName;
+          updateAvatarInitials(name);
+        }
+      } else {
+        statusEl.textContent = 'Error saving. Try again.';
+        statusEl.style.color = '#c62828';
+      }
+      btn.disabled = false;
+      btn.textContent = 'Save Profile';
+      setTimeout(function(){ statusEl.textContent = ''; }, 3000);
+    }).catch(function() {
+      statusEl.textContent = 'Error saving. Try again.';
+      statusEl.style.color = '#c62828';
+      btn.disabled = false;
+      btn.textContent = 'Save Profile';
+    });
+  };
 
   function loadPrefs(email) {
     fetch(SUPABASE_URL + '/rest/v1/contacts?email=eq.' + encodeURIComponent(email) + '&select=sub_events,sub_newsletter,sub_sponsors&limit=1', {
@@ -594,7 +892,9 @@
     var firstName = name ? name.split(' ')[0] : email.split('@')[0];
     document.getElementById('dash-name').textContent = firstName;
     document.getElementById('dash-email').textContent = email;
+    updateAvatarInitials(name || email);
     loadPrefs(email);
+    loadProfile(email);
   }
 
   // Sign out

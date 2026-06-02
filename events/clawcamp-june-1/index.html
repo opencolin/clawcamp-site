@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClawCamp, June 1st, Campfire — ClawCamp</title>
+<meta name="description" content="Campfire + Vibe Coding Nights at Frontier Tower SF. Get your agent running and build your second brain.">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bricolage+Grotesque:wght@300;400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/shared.css">
+<style>
+  /* Status banner */
+  .ev-status-bar {
+    background: #d32f2f; color: white; padding: 10px 48px;
+    font-size: 13px; font-weight: 700; display: none;
+    align-items: center; gap: 8px;
+  }
+  .ev-status-bar.visible { display: flex; }
+
+  /* Breadcrumb */
+  .ev-breadcrumb {
+    padding: 20px 48px 0;
+    font-size: 13px; color: var(--muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .ev-breadcrumb a { color: var(--muted); text-decoration: none; }
+  .ev-breadcrumb a:hover { color: var(--rust); }
+  .ev-breadcrumb .sep { opacity: 0.4; }
+
+  /* Hero */
+  .ev-hero {
+    display: grid; grid-template-columns: 1fr 400px;
+    gap: 40px; padding: 32px 48px 0; align-items: start;
+    max-width: 1100px;
+  }
+  .ev-hero-left {}
+  .ev-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--muted); margin-bottom: 14px;
+  }
+  .ev-title {
+    font-size: clamp(28px,4vw,42px); font-weight: 800;
+    letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 20px;
+  }
+  .ev-meta-block { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+  .ev-meta-row { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+  .ev-meta-icon { font-size: 16px; width: 20px; flex-shrink: 0; }
+  .ev-rsvp-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 14px 28px; background: var(--rust); color: white;
+    border-radius: 30px; font-weight: 700; font-size: 16px;
+    text-decoration: none; transition: background 0.15s;
+  }
+  .ev-rsvp-btn:hover { background: #a8420a; }
+  .ev-hero-image { border-radius: 16px; overflow: hidden; }
+  .ev-hero-image img {
+    width: 100%; aspect-ratio: 1/1; object-fit: cover;
+    display: block;
+  }
+
+  /* Body layout */
+  .ev-body {
+    display: grid; grid-template-columns: 1fr 320px;
+    gap: 48px; padding: 48px; max-width: 1100px;
+    align-items: start;
+  }
+  .ev-main {}
+  .ev-sidebar {}
+
+  /* Sections */
+  .ev-section { margin-bottom: 48px; }
+  .ev-section-title {
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--muted); margin-bottom: 20px;
+    padding-bottom: 10px; border-bottom: 1px solid var(--sand);
+  }
+
+  /* Speakers carousel */
+  .speakers-carousel-wrap { position: relative; }
+  .speakers-carousel {
+    display: flex; gap: 16px; overflow-x: auto;
+    scroll-snap-type: x mandatory; padding-bottom: 8px;
+    scrollbar-width: none;
+  }
+  .speakers-carousel::-webkit-scrollbar { display: none; }
+  .spk-card {
+    flex-shrink: 0; width: 160px; scroll-snap-align: start;
+    border-radius: 12px; overflow: hidden;
+    border: 1px solid var(--sand);
+  }
+  .spk-photo {
+    width: 160px; height: 160px; object-fit: cover;
+    display: block; background: var(--sand);
+  }
+  .spk-photo-placeholder {
+    width: 160px; height: 160px; background: linear-gradient(135deg, var(--sand), var(--cream));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 40px; font-weight: 800; color: var(--muted);
+  }
+  .spk-info { padding: 12px; background: white; }
+  .spk-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+  .spk-role { font-size: 11px; color: var(--muted); }
+  .spk-org { font-size: 11px; color: var(--rust); font-weight: 600; }
+  .carousel-nav {
+    display: flex; gap: 8px; margin-top: 12px;
+  }
+  .carousel-btn {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid var(--sand); background: white;
+    font-size: 18px; cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .carousel-btn:hover { border-color: var(--ink); }
+  .tba-note { font-size: 13px; color: var(--muted); margin-top: 12px; font-style: italic; }
+
+  /* Schedule */
+  .schedule-timeline { display: flex; flex-direction: column; gap: 0; }
+  .sched-block {
+    display: grid; grid-template-columns: 100px 1fr;
+    gap: 16px; padding: 16px 0;
+    border-bottom: 1px solid var(--cream);
+  }
+  .sched-block:last-child { border-bottom: none; }
+  .sched-time {
+    font-family: 'DM Mono', monospace; font-size: 12px;
+    color: var(--muted); padding-top: 2px; white-space: nowrap;
+  }
+  .sched-content {}
+  .sched-title { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+  .sched-speaker { font-size: 13px; color: var(--rust); margin-bottom: 4px; }
+  .sched-desc { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .sched-breakouts { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .sched-breakout {
+    padding: 10px 14px; background: var(--cream);
+    border-radius: 8px; font-size: 13px;
+  }
+  .sched-breakout strong { display: block; margin-bottom: 2px; }
+  .sched-breakout span { color: var(--muted); }
+
+  /* Sponsors */
+  .sponsor-logos { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
+  .sponsor-logo-link {
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px 24px; border: 1px solid var(--sand); border-radius: 10px;
+    opacity: 0.7; transition: opacity 0.15s; text-decoration: none;
+  }
+  .sponsor-logo-link:hover { opacity: 1; border-color: var(--ink); }
+  .sponsor-logo-link img { height: 32px; max-width: 120px; object-fit: contain; }
+  .sponsor-name-text { font-size: 16px; font-weight: 700; color: var(--ink); }
+
+  /* Sidebar */
+  .sidebar-card {
+    border: 1px solid var(--sand); border-radius: 12px;
+    padding: 24px; background: white; margin-bottom: 20px;
+  }
+  .sidebar-card h4 { font-size: 14px; font-weight: 700; margin-bottom: 16px; }
+  .sidebar-cta { display: flex; flex-direction: column; gap: 10px; }
+  .sidebar-cta a {
+    display: block; padding: 12px 16px; border-radius: 8px;
+    text-decoration: none; font-size: 14px; font-weight: 600;
+    text-align: center; transition: all 0.15s;
+  }
+  .sidebar-cta-primary { background: var(--rust); color: white; }
+  .sidebar-cta-primary:hover { background: #a8420a; }
+  .sidebar-cta-secondary { border: 1px solid var(--sand); color: var(--ink); }
+  .sidebar-cta-secondary:hover { border-color: var(--ink); }
+  .sidebar-detail-list { display: flex; flex-direction: column; gap: 12px; }
+  .sidebar-detail-row { display: flex; gap: 10px; font-size: 14px; }
+  .sidebar-detail-icon { font-size: 16px; flex-shrink: 0; }
+  .sidebar-detail-text { line-height: 1.4; }
+  .sidebar-detail-text small { display: block; font-size: 12px; color: var(--muted); }
+
+  /* About section */
+  .about-block {
+    padding: 48px; background: var(--cream);
+    border-top: 1px solid var(--sand);
+  }
+  .about-block h3 { font-size: 20px; font-weight: 800; margin-bottom: 12px; }
+  .about-block p { font-size: 15px; color: var(--muted); line-height: 1.7; max-width: 680px; }
+
+  /* Get Involved CTA */
+  .get-involved-band {
+    padding: 48px; display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px; border-top: 1px solid var(--sand);
+  }
+  .gi-card {
+    border: 1px solid var(--sand); border-radius: 12px;
+    padding: 24px; text-decoration: none; color: var(--ink);
+    transition: all 0.15s;
+  }
+  .gi-card:hover { border-color: var(--rust); transform: translateY(-2px); }
+  .gi-icon { font-size: 28px; margin-bottom: 12px; display: block; }
+  .gi-card h4 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .gi-card p { font-size: 13px; color: var(--muted); line-height: 1.4; }
+
+  @media (max-width: 768px) {
+    .ev-hero { grid-template-columns: 1fr; padding: 24px 20px 0; }
+    .ev-hero-image { order: -1; }
+    .ev-breadcrumb { padding: 16px 20px 0; }
+    .ev-status-bar { padding: 10px 20px; }
+    .ev-body { grid-template-columns: 1fr; padding: 32px 20px; }
+    .ev-sidebar { order: -1; }
+    .about-block, .get-involved-band { padding: 32px 20px; }
+  }
+</style>
+</head>
+<body>
+<div id="site-nav"></div>
+
+<!-- Live status banner -->
+<div class="ev-status-bar" id="ev-status-bar">
+  <span class="live-dot" style="width:8px;height:8px;border-radius:50%;background:white;animation:live-pulse 1.4s ease-in-out infinite"></span>
+  This event is happening right now
+</div>
+
+<!-- Breadcrumb -->
+<div class="ev-breadcrumb">
+  <a href="/events">All Events</a>
+  <span class="sep">›</span>
+  <a href="/chapters">ClawCamp SF, CA</a>
+  <span class="sep">›</span>
+  <span>June 1st Campfire</span>
+</div>
+
+<!-- Hero -->
+<div class="ev-hero">
+  <div class="ev-hero-left">
+    <div class="ev-tag">&#127758; ClawCamp SF, CA &nbsp;&middot;&nbsp; Community</div>
+    <h1 class="ev-title">ClawCamp, June 1st, Campfire</h1>
+    <div class="ev-meta-block">
+      <div class="ev-meta-row">
+        <span class="ev-meta-icon">📅</span>
+        <span><strong>Monday, June 1, 2026</strong> &middot; 6:00 PM &ndash; 9:00 PM PDT</span>
+      </div>
+      <div class="ev-meta-row">
+        <span class="ev-meta-icon">📍</span>
+        <span>Frontier Tower, 995 Market St, San Francisco, CA 94103</span>
+      </div>
+      <div class="ev-meta-row">
+        <span class="ev-meta-icon">🎟️</span>
+        <span>Free &middot; RSVP required</span>
+      </div>
+    </div>
+    <a href="https://luma.com/clawcamp-6-1" target="_blank" rel="noopener" class="ev-rsvp-btn">
+      RSVP on Luma →
+    </a>
+  </div>
+  <div class="ev-hero-image">
+    <img src="https://images.lumacdn.com/event-covers/7s/6cdfc1c1-b782-4540-a277-3578a6a1475c.jpg"
+      alt="ClawCamp June 1st Campfire" loading="lazy">
+  </div>
+</div>
+
+<!-- Body -->
+<div class="ev-body">
+  <div class="ev-main">
+
+    <!-- Description -->
+    <div class="ev-section">
+      <p style="font-size:16px;line-height:1.75;margin-bottom:16px">
+        The OpenClaw movement is not just an evolution &mdash; it&rsquo;s a revolution.
+      </p>
+      <p style="font-size:15px;line-height:1.75;color:var(--muted);margin-bottom:12px">
+        Every week, we host an amazing group of orgs and mentors to provide the support and tools to get you to the next level. Beginners will leave with their own personal agents and powerful skills to achieve almost any goal.
+      </p>
+      <p style="font-size:15px;line-height:1.75;color:var(--muted)">
+        This week&rsquo;s agenda: <strong>Vibe Coding Nights</strong> &mdash; Get Your Agent Running + Build Your Second Brain: Memory for Your Agent.
+      </p>
+    </div>
+
+    <!-- Speakers -->
+    <div class="ev-section">
+      <div class="ev-section-title">Speakers &amp; Facilitators</div>
+      <div class="speakers-carousel-wrap">
+        <div class="speakers-carousel" id="speakers-carousel">
+          <div class="spk-card">
+            <img class="spk-photo" src="https://images.lumacdn.com/cdn-cgi/image/format=auto,fit=cover,dpr=2,background=white,quality=75,width=400,height=400/headshots/7n/a02d6e82-e9e1-4ff9-9a81-1be726ad64a8" alt="Colin Lowenberg" loading="lazy">
+            <div class="spk-info">
+              <div class="spk-name">Colin Lowenberg</div>
+              <div class="spk-role">Developer Relations</div>
+              <div class="spk-org">Nebius</div>
+            </div>
+          </div>
+          <div class="spk-card">
+            <div class="spk-photo-placeholder">DN</div>
+            <div class="spk-info">
+              <div class="spk-name">Dave Nielsen</div>
+              <div class="spk-role">Advisor &amp; Head of DevRel</div>
+              <div class="spk-org">Cognee AI</div>
+            </div>
+          </div>
+          <div class="spk-card">
+            <div class="spk-photo-placeholder">MC</div>
+            <div class="spk-info">
+              <div class="spk-name">Marko Calvo-Cruz</div>
+              <div class="spk-role">Founder</div>
+              <div class="spk-org">UBI Studio</div>
+            </div>
+          </div>
+          <div class="spk-card">
+            <div class="spk-photo-placeholder">RZ</div>
+            <div class="spk-info">
+              <div class="spk-name">Rayyan Zahid</div>
+              <div class="spk-role">Co-Founder</div>
+              <div class="spk-org">Vibe Coding Nights</div>
+            </div>
+          </div>
+          <div class="spk-card">
+            <div class="spk-photo-placeholder">PW</div>
+            <div class="spk-info">
+              <div class="spk-name">Phillip Wessels</div>
+              <div class="spk-role">Facilitator</div>
+              <div class="spk-org">ClawCamp</div>
+            </div>
+          </div>
+          <div class="spk-card">
+            <div class="spk-photo-placeholder">AA</div>
+            <div class="spk-info">
+              <div class="spk-name">Aditya Advani</div>
+              <div class="spk-role">Founder</div>
+              <div class="spk-org">MoltPod</div>
+            </div>
+          </div>
+        </div>
+        <div class="carousel-nav">
+          <button class="carousel-btn" onclick="scrollCarousel(-1)" aria-label="Previous speakers">&#8249;</button>
+          <button class="carousel-btn" onclick="scrollCarousel(1)" aria-label="Next speakers">&#8250;</button>
+        </div>
+        <p class="tba-note">More to be announced</p>
+      </div>
+    </div>
+
+    <!-- Schedule -->
+    <div class="ev-section">
+      <div class="ev-section-title">Schedule</div>
+      <div class="schedule-timeline">
+        <div class="sched-block">
+          <div class="sched-time">6:00&ndash;6:15 PM</div>
+          <div class="sched-content">
+            <div class="sched-title">Welcome + Intros</div>
+            <div class="sched-speaker">Steven Echtman &mdash; Founder, Aiify.io</div>
+          </div>
+        </div>
+        <div class="sched-block">
+          <div class="sched-time">6:15&ndash;6:30 PM</div>
+          <div class="sched-content">
+            <div class="sched-title">Talk</div>
+            <div class="sched-speaker">Dave Nielsen</div>
+          </div>
+        </div>
+        <div class="sched-block">
+          <div class="sched-time">6:30&ndash;6:45 PM</div>
+          <div class="sched-content">
+            <div class="sched-title">Nebius &mdash; Tools for Personal Agents</div>
+            <div class="sched-speaker">Colin Lowenberg</div>
+          </div>
+        </div>
+        <div class="sched-block">
+          <div class="sched-time">6:45&ndash;7:00 PM</div>
+          <div class="sched-content">
+            <div class="sched-title">Harness Your Harness</div>
+            <div class="sched-speaker">Marko Calvo-Cruz</div>
+          </div>
+        </div>
+        <div class="sched-block">
+          <div class="sched-time">7:00&ndash;7:15 PM</div>
+          <div class="sched-content">
+            <div class="sched-title">Move to Breakout Sessions</div>
+          </div>
+        </div>
+        <div class="sched-block">
+          <div class="sched-time">7:15&ndash;8:45 PM</div>
+          <div class="sched-content">
+            <div class="sched-title">Concurrent Workshops</div>
+            <div class="sched-breakouts">
+              <div class="sched-breakout">
+                <strong>Build Your Second Brain: Memory for Your Agent</strong>
+                <span>Rayyan Zahid &amp; Prakshal Jain</span>
+              </div>
+              <div class="sched-breakout">
+                <strong>Nebius Workshop</strong>
+                <span>Colin Lowenberg</span>
+              </div>
+              <div class="sched-breakout">
+                <strong>Claw in Docker</strong>
+                <span>Phillip Wessels</span>
+              </div>
+              <div class="sched-breakout">
+                <strong>Claw on Moltpod</strong>
+                <span>Aditya Advani</span>
+              </div>
+              <div class="sched-breakout">
+                <strong>Claw on VPS</strong>
+                <span>Marko Calvo-Cruz</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sched-block">
+          <div class="sched-time">8:45&ndash;9:00 PM</div>
+          <div class="sched-content">
+            <div class="sched-title">Wrap Up &amp; Networking</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sponsors -->
+    <div class="ev-section">
+      <div class="ev-section-title">Sponsors</div>
+      <div class="sponsor-logos">
+        <a href="https://nebius.com" target="_blank" rel="noopener" class="sponsor-logo-link">
+          <span class="sponsor-name-text">Nebius</span>
+        </a>
+        <a href="https://aiify.io" target="_blank" rel="noopener" class="sponsor-logo-link">
+          <span class="sponsor-name-text">Aiify.io</span>
+        </a>
+      </div>
+    </div>
+
+  </div><!-- /ev-main -->
+
+  <!-- Sidebar -->
+  <div class="ev-sidebar">
+    <div class="sidebar-card">
+      <div class="sidebar-cta">
+        <a href="https://luma.com/clawcamp-6-1" target="_blank" rel="noopener" class="sidebar-cta-primary">RSVP on Luma →</a>
+        <a href="/chapters" class="sidebar-cta-secondary">&#127758; ClawCamp SF, CA</a>
+      </div>
+    </div>
+    <div class="sidebar-card">
+      <h4>Event Details</h4>
+      <div class="sidebar-detail-list">
+        <div class="sidebar-detail-row">
+          <span class="sidebar-detail-icon">📅</span>
+          <div class="sidebar-detail-text">
+            Monday, June 1, 2026
+            <small>6:00 PM &ndash; 9:00 PM PDT</small>
+          </div>
+        </div>
+        <div class="sidebar-detail-row">
+          <span class="sidebar-detail-icon">📍</span>
+          <div class="sidebar-detail-text">
+            Frontier Tower
+            <small>995 Market St, San Francisco, CA 94103<br>Floor 16 (elevator to 15, stairs up one)</small>
+          </div>
+        </div>
+        <div class="sidebar-detail-row">
+          <span class="sidebar-detail-icon">🎟️</span>
+          <div class="sidebar-detail-text">Free &middot; RSVP required</div>
+        </div>
+        <div class="sidebar-detail-row">
+          <span class="sidebar-detail-icon">🕐</span>
+          <div class="sidebar-detail-text">3 hours</div>
+        </div>
+      </div>
+    </div>
+    <div class="sidebar-card">
+      <h4>Organised by</h4>
+      <div style="font-size:14px;color:var(--muted);line-height:1.6">
+        <strong style="color:var(--ink)">ClawCamp Community</strong><br>
+        Produced by <a href="https://aiify.io" target="_blank" rel="noopener" style="color:var(--rust)">Aiify.io</a>
+      </div>
+    </div>
+  </div>
+</div><!-- /ev-body -->
+
+<!-- About -->
+<div class="about-block">
+  <h3>About ClawCamp</h3>
+  <p>ClawCamp hosts events where organisations, experts, and mentors introduce and provide the tools, training, and support people need to advance along their Personal Agent journeys. Beginners acquire personal agents and powerful skills to achieve almost any goal, while Intermediate and Advanced attendees dive deeper into the more nuanced aspects of agent management, multi-agent workflows, security, and token optimisation.</p>
+</div>
+
+<!-- Get Involved -->
+<div class="get-involved-band">
+  <a href="/speakers#apply" class="gi-card">
+    <span class="gi-icon">🎤</span>
+    <h4>Mentor</h4>
+    <p>Share your expertise with the community at a ClawCamp event</p>
+  </a>
+  <a href="/speakers#apply" class="gi-card">
+    <span class="gi-icon">🎙️</span>
+    <h4>Speak</h4>
+    <p>Present a talk or run a workshop at an upcoming camp</p>
+  </a>
+  <a href="/sponsors#contact" class="gi-card">
+    <span class="gi-icon">💎</span>
+    <h4>Sponsor</h4>
+    <p>Support the community and get your brand in front of AI builders</p>
+  </a>
+  <a href="/get-involved#partner" class="gi-card">
+    <span class="gi-icon">🤝</span>
+    <h4>Partner</h4>
+    <p>Collaborate with ClawCamp to expand your community reach</p>
+  </a>
+</div>
+
+<div id="site-footer"></div>
+<script src="/js/nav.js"></script>
+<script>
+// Check if event is happening now
+(function() {
+  var start = new Date('2026-06-01T18:00:00-07:00');
+  var end   = new Date('2026-06-01T21:00:00-07:00');
+  var now   = new Date();
+  if (now >= start && now <= end) {
+    document.getElementById('ev-status-bar').classList.add('visible');
+  }
+})();
+
+// Carousel scroll
+function scrollCarousel(dir) {
+  var c = document.getElementById('speakers-carousel');
+  c.scrollBy({ left: dir * 176, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>

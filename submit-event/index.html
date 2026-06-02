@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Submit an Event — ClawCamp</title>
+<meta name="description" content="Submit your ClawCamp event for review and get listed on the global calendar.">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bricolage+Grotesque:wght@300;400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/shared.css">
+<style>
+  .submit-page { max-width: 760px; padding: 48px 48px 80px; }
+
+  /* Page header */
+  .submit-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .submit-head h1 { font-size: clamp(28px,5vw,38px); font-weight: 800; letter-spacing: -0.03em; }
+  .import-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 11px 20px; border-radius: 8px;
+    border: 1px solid var(--sand); background: white;
+    font-family: inherit; font-size: 14px; font-weight: 600;
+    color: var(--ink); cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .import-btn:hover { border-color: var(--rust); color: var(--rust); }
+  .submit-sub { font-size: 14px; color: var(--muted); margin-bottom: 32px; }
+
+  /* Tabs */
+  .submit-tabs {
+    display: flex; gap: 0; border-bottom: 2px solid var(--sand);
+    margin-bottom: 32px; overflow-x: auto;
+  }
+  .submit-tab {
+    padding: 12px 20px; font-size: 14px; font-weight: 600;
+    color: var(--muted); cursor: pointer; border: none; background: none;
+    font-family: inherit; border-bottom: 2px solid transparent;
+    margin-bottom: -2px; white-space: nowrap; transition: color 0.15s;
+  }
+  .submit-tab.active { color: var(--rust); border-bottom-color: var(--rust); }
+  .submit-tab .tab-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--rust); color: white;
+    font-size: 10px; font-weight: 700; margin-left: 6px;
+  }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* Form cards */
+  .form-card {
+    border: 1px solid var(--sand); border-radius: 12px;
+    padding: 28px; margin-bottom: 20px; background: white;
+  }
+  .form-card h3 { font-size: 17px; font-weight: 700; margin-bottom: 20px; }
+  .form-card .card-divider { border: none; border-top: 1px solid var(--sand); margin: 20px 0; }
+
+  /* Fields */
+  .field { margin-bottom: 20px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block; font-family: 'DM Mono', monospace;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--muted); margin-bottom: 7px;
+  }
+  .field label .req { color: var(--rust); margin-left: 2px; }
+  .field label .note { text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .field input, .field textarea, .field select {
+    width: 100%; padding: 12px 14px;
+    border: 1px solid var(--sand); border-radius: 8px;
+    font-family: inherit; font-size: 14px; color: var(--ink);
+    background: white; transition: border-color 0.15s; outline: none;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--rust); }
+  .field textarea { resize: vertical; }
+  .field-hint { font-size: 12px; color: var(--muted); margin-top: 5px; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* Format toggles */
+  .format-toggle-group { display: flex; gap: 10px; flex-wrap: wrap; }
+  .format-toggle {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px 18px; border-radius: 8px;
+    border: 2px solid var(--sand); background: white;
+    font-family: inherit; font-size: 13px; font-weight: 700;
+    color: var(--muted); cursor: pointer; transition: all 0.15s;
+  }
+  .format-toggle.selected { border-color: var(--rust); color: var(--rust); background: var(--rust-light); }
+
+  /* Speakers */
+  .speakers-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+  .speaker-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px; border: 1px solid var(--sand);
+    border-radius: 8px; background: white;
+  }
+  .speaker-thumb {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--sand); object-fit: cover; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: var(--muted);
+    overflow: hidden;
+  }
+  .speaker-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .speaker-info { flex: 1; }
+  .speaker-info .spk-name { font-size: 14px; font-weight: 700; }
+  .speaker-info .spk-meta { font-size: 12px; color: var(--muted); }
+  .speaker-remove {
+    width: 28px; height: 28px; border-radius: 50%; border: none;
+    background: #fde8e8; color: #c62828; font-size: 16px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: background 0.15s;
+  }
+  .speaker-remove:hover { background: #f5c6c6; }
+  .add-speaker-form {
+    border: 1px solid var(--sand); border-radius: 10px;
+    padding: 20px; background: var(--cream); display: none;
+  }
+  .add-speaker-form.open { display: block; }
+  .add-speaker-form h4 { font-size: 14px; font-weight: 700; margin-bottom: 16px; }
+
+  /* Schedule */
+  .schedule-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+  .schedule-block {
+    display: grid; grid-template-columns: 120px 1fr auto;
+    gap: 12px; align-items: center;
+    padding: 12px 16px; border: 1px solid var(--sand);
+    border-radius: 8px; background: white;
+  }
+  .schedule-time { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; }
+  .schedule-topic { font-size: 14px; }
+  .schedule-topic span { font-size: 12px; color: var(--muted); display: block; }
+  .block-remove { color: var(--muted); background: none; border: none; cursor: pointer; font-size: 18px; }
+
+  /* Action bar */
+  .submit-actions {
+    position: sticky; bottom: 0;
+    background: var(--paper); border-top: 1px solid var(--sand);
+    padding: 16px 0; margin: 32px -48px 0;
+    display: flex; align-items: center; gap: 12px;
+    padding-left: 48px; padding-right: 48px;
+    z-index: 10;
+  }
+  .btn-draft {
+    padding: 12px 24px; border-radius: 8px;
+    border: 1px solid var(--sand); background: white;
+    font-family: inherit; font-size: 14px; font-weight: 600;
+    color: var(--ink); cursor: pointer; transition: all 0.15s;
+  }
+  .btn-draft:hover { border-color: var(--ink); }
+  .draft-badge {
+    display: inline-block; padding: 2px 10px; border-radius: 20px;
+    background: var(--gold-light); color: var(--gold);
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;
+  }
+  .submit-status { font-size: 13px; font-weight: 600; margin-left: 4px; }
+
+  /* Import modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    z-index: 1000; display: flex; align-items: center; justify-content: center;
+    padding: 20px; display: none;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: white; border-radius: 16px; padding: 36px;
+    max-width: 500px; width: 100%; position: relative;
+  }
+  .modal-close {
+    position: absolute; top: 16px; right: 16px;
+    background: none; border: none; font-size: 20px; cursor: pointer; color: var(--muted);
+  }
+  .modal h2 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+  .modal .modal-sub { font-size: 14px; color: var(--muted); margin-bottom: 24px; line-height: 1.5; }
+  .modal .field { margin-bottom: 16px; }
+  .modal .platforms {
+    font-size: 12px; color: var(--muted); margin-bottom: 20px;
+  }
+  .import-status { font-size: 13px; font-weight: 600; margin-top: 8px; min-height: 18px; }
+
+  /* Login gate */
+  .login-gate {
+    text-align: center; padding: 80px 48px;
+  }
+  .login-gate .gate-icon { font-size: 48px; margin-bottom: 16px; }
+  .login-gate h2 { font-size: 24px; font-weight: 800; margin-bottom: 8px; }
+  .login-gate p { font-size: 15px; color: var(--muted); margin-bottom: 24px; line-height: 1.5; }
+
+  @media (max-width: 640px) {
+    .submit-page { padding: 32px 20px 80px; }
+    .field-row, .field-row-3 { grid-template-columns: 1fr; }
+    .submit-actions { margin: 32px -20px 0; padding-left: 20px; padding-right: 20px; }
+    .schedule-block { grid-template-columns: 90px 1fr auto; }
+  }
+</style>
+</head>
+<body>
+<div id="site-nav"></div>
+
+<!-- Auth gate (hidden once auth confirmed) -->
+<div class="login-gate" id="login-gate">
+  <div class="gate-icon">📋</div>
+  <h2>Sign In to Submit an Event</h2>
+  <p>You need a ClawCamp account to submit events for review.</p>
+  <a href="/get-involved" class="btn-rust">Sign In / Sign Up →</a>
+</div>
+
+<!-- Main form (hidden until auth) -->
+<div class="submit-page" id="submit-form-page" style="display:none">
+
+  <div class="submit-head">
+    <div>
+      <h1>📋 Submit an Event</h1>
+      <span class="draft-badge" id="event-status-badge">DRAFT</span>
+    </div>
+    <button class="import-btn" onclick="openImport()">📥 Import Event</button>
+  </div>
+  <p class="submit-sub">Your event will go to admin review &middot; Chapter assigned after approval</p>
+
+  <div class="submit-tabs" role="tablist">
+    <button class="submit-tab active" onclick="switchTab('details',this)">📋 Details</button>
+    <button class="submit-tab" onclick="switchTab('speakers',this)">👥 Speakers <span class="tab-badge" id="tab-spk-count" style="display:none">0</span></button>
+    <button class="submit-tab" onclick="switchTab('schedule',this)">📅 Schedule <span class="tab-badge" id="tab-sch-count" style="display:none">0</span></button>
+    <button class="submit-tab" onclick="switchTab('sponsors',this)">💎 Sponsors <span class="tab-badge" id="tab-spon-count" style="display:none">0</span></button>
+  </div>
+
+  <!-- DETAILS TAB -->
+  <div id="tab-details" class="tab-pane active">
+    <div class="form-card">
+      <h3>Event Details</h3>
+      <div class="field">
+        <label>Event Name <span class="req">*</span></label>
+        <input type="text" id="ev-name" placeholder="e.g. ClawCamp Austin Kickoff">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Start Date <span class="req">*</span></label>
+          <input type="date" id="ev-start-date">
+        </div>
+        <div class="field">
+          <label>Start Time</label>
+          <input type="text" id="ev-start-time" placeholder="e.g. 6:00 PM">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>End Date <span class="note">&mdash; blank if single-day</span></label>
+          <input type="date" id="ev-end-date">
+        </div>
+        <div class="field">
+          <label>End Time <span class="note">&mdash; on end date if multi-day</span></label>
+          <input type="text" id="ev-end-time" placeholder="e.g. 9:00 PM">
+        </div>
+      </div>
+      <div class="field">
+        <label>Event Format <span class="req">*</span></label>
+        <div class="format-toggle-group">
+          <button type="button" class="format-toggle selected" onclick="selectFormat('in-person',this)">📍 In-Person</button>
+          <button type="button" class="format-toggle" onclick="selectFormat('virtual',this)">💻 Virtual</button>
+          <button type="button" class="format-toggle" onclick="selectFormat('hybrid',this)">🔀 Hybrid <span style="font-size:11px;font-weight:400;margin-left:4px">both filters</span></button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Venue Name</label>
+        <input type="text" id="ev-venue" placeholder="e.g. The Hibernia Bank">
+      </div>
+      <div class="field">
+        <label>Location <span class="req">*</span></label>
+        <input type="text" id="ev-location" placeholder="City, State / Country">
+      </div>
+    </div>
+
+    <div class="form-card">
+      <h3>Description</h3>
+      <div class="field">
+        <label>Short Description <span class="req">*</span></label>
+        <textarea id="ev-short-desc" rows="3" placeholder="1–2 sentences — shown on event cards and listings"></textarea>
+      </div>
+      <div class="field">
+        <label>Full Description <span class="note">&mdash; Markdown supported</span></label>
+        <textarea id="ev-full-desc" rows="6" placeholder="More detail about the event — agenda, speakers, what to expect..."></textarea>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <h3>Event Image <span style="font-size:13px;font-weight:400;color:var(--muted)">(optional)</span></h3>
+      <div class="field">
+        <label>Upload Image <span class="note">&mdash; JPG, PNG, WebP or GIF &middot; up to 6&nbsp;MB</span></label>
+        <input type="file" id="ev-image" accept="image/jpeg,image/png,image/webp,image/gif" onchange="previewImage(this)">
+        <p class="field-hint">Shown as the banner on your event card and detail page.</p>
+        <div id="image-preview-wrap" style="display:none;margin-top:10px">
+          <img id="image-preview" style="max-width:300px;border-radius:8px;border:1px solid var(--sand)" alt="Preview">
+        </div>
+      </div>
+      <div class="field">
+        <label>Or paste an image URL</label>
+        <input type="url" id="ev-image-url" placeholder="https://...">
+      </div>
+    </div>
+
+    <div class="form-card">
+      <h3>Links</h3>
+      <div class="field-row">
+        <div class="field">
+          <label>Event / Registration Page</label>
+          <input type="url" id="ev-reg-url" placeholder="https://...">
+        </div>
+        <div class="field">
+          <label>Luma URL</label>
+          <input type="url" id="ev-luma-url" placeholder="https://lu.ma/...">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <h3>Hosts <span style="font-size:13px;font-weight:400;color:var(--muted)">(optional)</span></h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Co-organisers &mdash; &ldquo;can edit&rdquo; lets them edit this event</p>
+      <div id="hosts-list" style="margin-bottom:12px"></div>
+      <button type="button" class="btn-draft" onclick="addHost()">+ Add host</button>
+    </div>
+
+    <div class="form-card">
+      <h3>Notes for reviewers <span style="font-size:13px;font-weight:400;color:var(--muted)">(internal, optional)</span></h3>
+      <div class="field">
+        <textarea id="ev-reviewer-notes" rows="4" placeholder="Anything the ClawCamp team should know..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- SPEAKERS TAB -->
+  <div id="tab-speakers" class="tab-pane">
+    <div class="form-card">
+      <h3>Speakers &amp; Facilitators</h3>
+      <div class="speakers-list" id="speakers-list"></div>
+      <button type="button" class="btn-draft" onclick="toggleAddSpeaker()">+ Add Speaker / Facilitator</button>
+      <div class="add-speaker-form" id="add-speaker-form">
+        <h4>Add Speaker / Facilitator</h4>
+        <div class="field">
+          <label>Search Existing Contacts <span class="note">&mdash; or fill in manually below</span></label>
+          <input type="text" id="spk-search" placeholder="Type a name or organisation..."
+            oninput="searchContacts(this.value)" autocomplete="off">
+          <div id="contact-suggestions" style="border:1px solid var(--sand);border-radius:6px;background:white;display:none;max-height:180px;overflow-y:auto;margin-top:4px"></div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Full Name <span class="req">*</span></label>
+            <input type="text" id="spk-name" placeholder="Full name">
+          </div>
+          <div class="field">
+            <label>Title / Role</label>
+            <input type="text" id="spk-role" placeholder="e.g. Founder, Developer Relations">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Organisation</label>
+            <input type="text" id="spk-org" placeholder="Company or affiliation">
+          </div>
+          <div class="field">
+            <label>Headshot URL</label>
+            <input type="url" id="spk-photo" placeholder="https://..." oninput="updatePhotoPreview(this.value)">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:16px;align-items:center">
+          <button type="button" class="btn-rust" style="font-size:14px;padding:10px 20px" onclick="confirmAddSpeaker()">Add Speaker</button>
+          <button type="button" class="btn-cancel-link" onclick="toggleAddSpeaker()">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCHEDULE TAB -->
+  <div id="tab-schedule" class="tab-pane">
+    <div class="form-card">
+      <h3>Agenda / Schedule</h3>
+      <div class="schedule-list" id="schedule-list"></div>
+      <div class="field-row-3" style="margin-bottom:12px">
+        <div class="field">
+          <label>Time</label>
+          <input type="text" id="blk-time" placeholder="e.g. 6:00 PM">
+        </div>
+        <div class="field">
+          <label>Session Title</label>
+          <input type="text" id="blk-title" placeholder="e.g. Welcome + Intros">
+        </div>
+        <div class="field">
+          <label>Speaker / Facilitator</label>
+          <input type="text" id="blk-speaker" placeholder="Optional">
+        </div>
+      </div>
+      <button type="button" class="btn-draft" onclick="addScheduleBlock()">+ Add Time Block</button>
+    </div>
+  </div>
+
+  <!-- SPONSORS TAB -->
+  <div id="tab-sponsors" class="tab-pane">
+    <div class="form-card">
+      <h3>Sponsors</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Add sponsors specific to this event. Global ClawCamp sponsors are shown automatically.</p>
+      <div id="sponsors-list" style="margin-bottom:16px"></div>
+      <div class="field-row">
+        <div class="field">
+          <label>Sponsor Name</label>
+          <input type="text" id="spon-name" placeholder="e.g. Nebius AI">
+        </div>
+        <div class="field">
+          <label>Logo URL</label>
+          <input type="url" id="spon-logo" placeholder="https://...">
+        </div>
+      </div>
+      <div class="field">
+        <label>Sponsor Website</label>
+        <input type="url" id="spon-url" placeholder="https://nebius.com">
+      </div>
+      <div class="field">
+        <label>Tier</label>
+        <select id="spon-tier">
+          <option value="title">Title Sponsor</option>
+          <option value="gold">Gold</option>
+          <option value="silver" selected>Silver</option>
+          <option value="community">Community Partner</option>
+        </select>
+      </div>
+      <button type="button" class="btn-draft" onclick="addSponsor()" style="margin-top:8px">+ Add Sponsor</button>
+    </div>
+  </div>
+
+  <!-- Sticky action bar -->
+  <div class="submit-actions">
+    <button type="button" class="btn-cancel-link" onclick="history.back()">Cancel</button>
+    <button type="button" class="btn-draft" onclick="saveEvent('draft')">Save as draft</button>
+    <button type="button" class="btn-rust" onclick="saveEvent('submitted')">Submit for review</button>
+    <span class="submit-status" id="submit-status"></span>
+  </div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal-overlay" id="import-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeImport()">&times;</button>
+    <h2>Import from existing event</h2>
+    <p class="modal-sub">Enter URL from your existing event. Platforms supported:</p>
+    <p class="platforms">Luma, Partiful, SocialLoop, Eventbrite &amp; Meetup.</p>
+    <div class="field">
+      <input type="url" id="import-url" placeholder="https://luma.com/your-event"
+        onkeydown="if(event.key==='Enter')doImport()">
+      <p class="field-hint">By submitting URL you agree that you have permission from event owner to add this event information to ClawCamp.</p>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button type="button" class="btn-rust" onclick="doImport()">Add Event</button>
+      <button type="button" class="btn-cancel-link" onclick="closeImport()">Cancel</button>
+    </div>
+    <div class="import-status" id="import-status"></div>
+  </div>
+</div>
+
+<div id="site-footer"></div>
+<script src="/js/nav.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106.2/dist/umd/supabase.js" integrity="sha384-m/8UHFJHeU6nrCKP2hBnAseuvAKUmLF+8e5bWos5CJL023vuxX7kiVL5t8yjsJhV" crossorigin="anonymous"></script>
+<script src="/js/auth.js"></script>
+<script>
+var SUPABASE_URL = 'https://mrnccntqmkxjazznejfc.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ybmNjbnRxbWt4amF6em5lamZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMDA3NTksImV4cCI6MjA5MDc3Njc1OX0.T6oFTtYiFTsx6ojuogpZFXAS7tN5-dPzwvmY5V2xFGI';
+
+var state = {
+  format: 'in-person',
+  speakers: [],
+  schedule: [],
+  sponsors: [],
+  hosts: [],
+  userEmail: ''
+};
+
+// Auth check
+clawAuth.getSession().then(function(r) {
+  if (r && r.data && r.data.session) {
+    state.userEmail = r.data.session.user.email;
+    document.getElementById('login-gate').style.display = 'none';
+    document.getElementById('submit-form-page').style.display = '';
+  } else {
+    document.getElementById('login-gate').style.display = '';
+  }
+}).catch(function() {
+  document.getElementById('login-gate').style.display = '';
+});
+
+// Tab switching
+function switchTab(name, btn) {
+  document.querySelectorAll('.submit-tab').forEach(function(b){ b.classList.remove('active'); });
+  document.querySelectorAll('.tab-pane').forEach(function(p){ p.classList.remove('active'); });
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// Format toggle
+function selectFormat(fmt, btn) {
+  state.format = fmt;
+  document.querySelectorAll('.format-toggle').forEach(function(b){ b.classList.remove('selected'); });
+  btn.classList.add('selected');
+}
+
+// Image preview — use DOM methods, not innerHTML
+function previewImage(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var wrap = document.getElementById('image-preview-wrap');
+    var img = document.getElementById('image-preview');
+    img.src = e.target.result;
+    wrap.style.display = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+// --- Speakers ---
+function toggleAddSpeaker() {
+  var form = document.getElementById('add-speaker-form');
+  form.classList.toggle('open');
+  if (form.classList.contains('open')) {
+    document.getElementById('spk-name').focus();
+  }
+}
+
+function updatePhotoPreview(url) {
+  // no-op here; preview shown in speaker row when added
+}
+
+var _contactSearchTimer;
+function searchContacts(q) {
+  var suggestions = document.getElementById('contact-suggestions');
+  if (!q || q.length < 2) { suggestions.style.display = 'none'; return; }
+  clearTimeout(_contactSearchTimer);
+  _contactSearchTimer = setTimeout(function() {
+    fetch(SUPABASE_URL + '/rest/v1/contacts?or=(name.ilike.*' + encodeURIComponent(q) + '*,company.ilike.*' + encodeURIComponent(q) + '*)&select=name,title,company,about&limit=6', {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+    }).then(function(r){ return r.json(); })
+    .then(function(rows) {
+      suggestions.textContent = '';
+      if (!rows.length) { suggestions.style.display = 'none'; return; }
+      rows.forEach(function(row) {
+        var item = document.createElement('div');
+        item.style.cssText = 'padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--sand)';
+        item.addEventListener('mouseover', function(){ this.style.background = 'var(--cream)'; });
+        item.addEventListener('mouseout', function(){ this.style.background = ''; });
+        var nameEl = document.createElement('div');
+        nameEl.style.fontWeight = '600';
+        nameEl.textContent = row.name || '';
+        var metaEl = document.createElement('div');
+        metaEl.style.cssText = 'color:var(--muted);font-size:11px';
+        metaEl.textContent = [row.title, row.company].filter(Boolean).join(' · ');
+        item.appendChild(nameEl);
+        item.appendChild(metaEl);
+        item.addEventListener('click', function() {
+          document.getElementById('spk-name').value = row.name || '';
+          document.getElementById('spk-role').value = row.title || '';
+          document.getElementById('spk-org').value = row.company || '';
+          suggestions.style.display = 'none';
+          document.getElementById('spk-search').value = row.name || '';
+        });
+        suggestions.appendChild(item);
+      });
+      suggestions.style.display = 'block';
+    }).catch(function(){ suggestions.style.display = 'none'; });
+  }, 300);
+}
+
+function confirmAddSpeaker() {
+  var name = document.getElementById('spk-name').value.trim();
+  if (!name) { alert('Name is required.'); return; }
+  var spk = {
+    name: name,
+    role: document.getElementById('spk-role').value.trim(),
+    org: document.getElementById('spk-org').value.trim(),
+    photo: document.getElementById('spk-photo').value.trim(),
+    id: Date.now()
+  };
+  state.speakers.push(spk);
+  renderSpeakers();
+  // Reset
+  ['spk-name','spk-role','spk-org','spk-photo','spk-search'].forEach(function(id){
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('add-speaker-form').classList.remove('open');
+}
+
+function removeSpeaker(id) {
+  state.speakers = state.speakers.filter(function(s){ return s.id !== id; });
+  renderSpeakers();
+}
+
+function renderSpeakers() {
+  var list = document.getElementById('speakers-list');
+  var badge = document.getElementById('tab-spk-count');
+  list.textContent = '';
+  if (!state.speakers.length) {
+    badge.style.display = 'none';
+    return;
+  }
+  badge.textContent = state.speakers.length;
+  badge.style.display = 'inline-flex';
+  state.speakers.forEach(function(spk) {
+    var row = document.createElement('div');
+    row.className = 'speaker-row';
+
+    var thumb = document.createElement('div');
+    thumb.className = 'speaker-thumb';
+    if (spk.photo) {
+      var img = document.createElement('img');
+      img.src = spk.photo;
+      img.alt = spk.name;
+      img.onerror = function(){ this.parentNode.textContent = spk.name.charAt(0); };
+      thumb.appendChild(img);
+    } else {
+      thumb.textContent = spk.name.charAt(0);
+    }
+
+    var info = document.createElement('div');
+    info.className = 'speaker-info';
+    var nameEl = document.createElement('div');
+    nameEl.className = 'spk-name';
+    nameEl.textContent = spk.name;
+    var metaEl = document.createElement('div');
+    metaEl.className = 'spk-meta';
+    metaEl.textContent = [spk.role, spk.org].filter(Boolean).join(' · ');
+    info.appendChild(nameEl);
+    info.appendChild(metaEl);
+
+    var removeBtn = document.createElement('button');
+    removeBtn.className = 'speaker-remove';
+    removeBtn.textContent = '×';
+    removeBtn.setAttribute('aria-label', 'Remove ' + spk.name);
+    removeBtn.addEventListener('click', function(){ removeSpeaker(spk.id); });
+
+    row.appendChild(thumb);
+    row.appendChild(info);
+    row.appendChild(removeBtn);
+    list.appendChild(row);
+  });
+}
+
+// --- Schedule ---
+function addScheduleBlock() {
+  var time = document.getElementById('blk-time').value.trim();
+  var title = document.getElementById('blk-title').value.trim();
+  var speaker = document.getElementById('blk-speaker').value.trim();
+  if (!time && !title) return;
+  state.schedule.push({ time: time, title: title, speaker: speaker, id: Date.now() });
+  renderSchedule();
+  document.getElementById('blk-time').value = '';
+  document.getElementById('blk-title').value = '';
+  document.getElementById('blk-speaker').value = '';
+  document.getElementById('blk-time').focus();
+}
+
+function removeBlock(id) {
+  state.schedule = state.schedule.filter(function(b){ return b.id !== id; });
+  renderSchedule();
+}
+
+function renderSchedule() {
+  var list = document.getElementById('schedule-list');
+  var badge = document.getElementById('tab-sch-count');
+  list.textContent = '';
+  badge.style.display = state.schedule.length ? 'inline-flex' : 'none';
+  if (state.schedule.length) badge.textContent = state.schedule.length;
+  state.schedule.forEach(function(blk) {
+    var row = document.createElement('div');
+    row.className = 'schedule-block';
+
+    var timeEl = document.createElement('div');
+    timeEl.className = 'schedule-time';
+    timeEl.textContent = blk.time;
+
+    var topicEl = document.createElement('div');
+    topicEl.className = 'schedule-topic';
+    var titleText = document.createTextNode(blk.title);
+    topicEl.appendChild(titleText);
+    if (blk.speaker) {
+      var spkEl = document.createElement('span');
+      spkEl.textContent = blk.speaker;
+      topicEl.appendChild(spkEl);
+    }
+
+    var removeBtn = document.createElement('button');
+    removeBtn.className = 'block-remove';
+    removeBtn.textContent = '×';
+    removeBtn.setAttribute('aria-label', 'Remove block');
+    removeBtn.addEventListener('click', function(){ removeBlock(blk.id); });
+
+    row.appendChild(timeEl);
+    row.appendChild(topicEl);
+    row.appendChild(removeBtn);
+    list.appendChild(row);
+  });
+}
+
+// --- Sponsors ---
+function addSponsor() {
+  var name = document.getElementById('spon-name').value.trim();
+  if (!name) return;
+  state.sponsors.push({
+    name: name,
+    logo: document.getElementById('spon-logo').value.trim(),
+    url: document.getElementById('spon-url').value.trim(),
+    tier: document.getElementById('spon-tier').value,
+    id: Date.now()
+  });
+  renderSponsors();
+  ['spon-name','spon-logo','spon-url'].forEach(function(id){ document.getElementById(id).value=''; });
+}
+
+function removeSponsor(id) {
+  state.sponsors = state.sponsors.filter(function(s){ return s.id !== id; });
+  renderSponsors();
+}
+
+function renderSponsors() {
+  var list = document.getElementById('sponsors-list');
+  var badge = document.getElementById('tab-spon-count');
+  list.textContent = '';
+  badge.style.display = state.sponsors.length ? 'inline-flex' : 'none';
+  if (state.sponsors.length) badge.textContent = state.sponsors.length;
+  state.sponsors.forEach(function(spon) {
+    var row = document.createElement('div');
+    row.className = 'speaker-row';
+
+    var nameEl = document.createElement('div');
+    nameEl.className = 'speaker-info';
+    var n = document.createElement('div');
+    n.className = 'spk-name';
+    n.textContent = spon.name;
+    var m = document.createElement('div');
+    m.className = 'spk-meta';
+    m.textContent = spon.tier + (spon.url ? ' · ' + spon.url : '');
+    nameEl.appendChild(n);
+    nameEl.appendChild(m);
+
+    var removeBtn = document.createElement('button');
+    removeBtn.className = 'speaker-remove';
+    removeBtn.textContent = '×';
+    removeBtn.addEventListener('click', function(){ removeSponsor(spon.id); });
+
+    row.appendChild(nameEl);
+    row.appendChild(removeBtn);
+    list.appendChild(row);
+  });
+}
+
+// --- Hosts ---
+function addHost() {
+  var email = prompt('Enter co-host email address:');
+  if (!email || !email.includes('@')) return;
+  state.hosts.push({ email: email, id: Date.now() });
+  renderHosts();
+}
+
+function renderHosts() {
+  var list = document.getElementById('hosts-list');
+  list.textContent = '';
+  state.hosts.forEach(function(h) {
+    var tag = document.createElement('span');
+    tag.style.cssText = 'display:inline-flex;align-items:center;gap:6px;background:var(--cream);border:1px solid var(--sand);border-radius:20px;padding:4px 12px;font-size:13px;margin:0 6px 6px 0';
+    var emailText = document.createTextNode(h.email);
+    var removeBtn = document.createElement('button');
+    removeBtn.style.cssText = 'background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:0;line-height:1';
+    removeBtn.textContent = '×';
+    removeBtn.addEventListener('click', function(){
+      state.hosts = state.hosts.filter(function(x){ return x.id !== h.id; });
+      renderHosts();
+    });
+    tag.appendChild(emailText);
+    tag.appendChild(removeBtn);
+    list.appendChild(tag);
+  });
+}
+
+// --- Save ---
+function saveEvent(status) {
+  var name = document.getElementById('ev-name').value.trim();
+  var startDate = document.getElementById('ev-start-date').value;
+  var location = document.getElementById('ev-location').value.trim();
+  var shortDesc = document.getElementById('ev-short-desc').value.trim();
+  var statusEl = document.getElementById('submit-status');
+
+  if (!name) { statusEl.textContent = 'Event name is required.'; statusEl.style.color='#c62828'; return; }
+  if (!startDate) { statusEl.textContent = 'Start date is required.'; statusEl.style.color='#c62828'; return; }
+  if (!location && state.format !== 'virtual') { statusEl.textContent = 'Location is required.'; statusEl.style.color='#c62828'; return; }
+  if (!shortDesc) { statusEl.textContent = 'Short description is required.'; statusEl.style.color='#c62828'; return; }
+
+  statusEl.textContent = 'Saving...';
+  statusEl.style.color = '';
+
+  var body = {
+    name: name,
+    event_date: startDate,
+    city: location,
+    event_type: state.format,
+    description: shortDesc,
+    location: location,
+    venue_name: document.getElementById('ev-venue').value.trim() || null,
+    time_range: [
+      document.getElementById('ev-start-time').value.trim(),
+      document.getElementById('ev-end-time').value.trim()
+    ].filter(Boolean).join(' – ') || null,
+    link: document.getElementById('ev-reg-url').value.trim() || document.getElementById('ev-luma-url').value.trim() || null,
+    notes: [
+      status === 'submitted' ? 'STATUS: submitted for review' : 'STATUS: draft',
+      document.getElementById('ev-reviewer-notes').value.trim(),
+      state.speakers.length ? 'Speakers: ' + state.speakers.map(function(s){return s.name;}).join(', ') : null,
+      state.schedule.length ? 'Schedule blocks: ' + state.schedule.length : null,
+      state.sponsors.length ? 'Sponsors: ' + state.sponsors.map(function(s){return s.name;}).join(', ') : null
+    ].filter(Boolean).join('\n\n') || null,
+    image_url: document.getElementById('ev-image-url').value.trim() || null,
+    is_external: false,
+    is_featured: false,
+    source: 'submitted:' + (state.userEmail || 'unknown')
+  };
+
+  fetch(SUPABASE_URL + '/rest/v1/events', {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    },
+    body: JSON.stringify(body)
+  }).then(function(r){ return r.json(); })
+  .then(function(data) {
+    if (Array.isArray(data) && data.length) {
+      if (status === 'submitted') {
+        statusEl.textContent = '✓ Submitted for review!';
+        document.getElementById('event-status-badge').textContent = 'SUBMITTED';
+        document.getElementById('event-status-badge').style.background = 'var(--moss-light)';
+        document.getElementById('event-status-badge').style.color = 'var(--moss)';
+      } else {
+        statusEl.textContent = '✓ Saved as draft.';
+      }
+      statusEl.style.color = '#2d4a2f';
+      setTimeout(function(){ statusEl.textContent = ''; }, 3000);
+    } else {
+      statusEl.textContent = 'Error saving — check console.';
+      statusEl.style.color = '#c62828';
+      console.error('Save error:', data);
+    }
+  }).catch(function(err) {
+    statusEl.textContent = 'Error saving. Try again.';
+    statusEl.style.color = '#c62828';
+    console.error(err);
+  });
+}
+
+// --- Import from Luma ---
+function openImport() { document.getElementById('import-modal').classList.add('open'); }
+function closeImport() {
+  document.getElementById('import-modal').classList.remove('open');
+  document.getElementById('import-url').value = '';
+  document.getElementById('import-status').textContent = '';
+}
+
+function doImport() {
+  var url = document.getElementById('import-url').value.trim();
+  var statusEl = document.getElementById('import-status');
+  if (!url) return;
+  statusEl.textContent = 'Fetching event...';
+  statusEl.style.color = '';
+
+  // Extract Luma slug and call the Luma API
+  var lumaMatch = url.match(/(?:luma\.com|lu\.ma)\/([a-zA-Z0-9_-]+)/);
+  if (!lumaMatch) {
+    statusEl.textContent = 'Paste a Luma event URL (luma.com/...) to import.';
+    statusEl.style.color = '#c62828';
+    return;
+  }
+  var slug = lumaMatch[1];
+  // Use our fetch-side proxy approach: fetch the Luma JSON-LD from the page
+  fetch('https://luma.com/' + slug, {
+    headers: { 'Accept': 'text/html' }
+  }).then(function(r){ return r.text(); })
+  .then(function(html) {
+    // Parse JSON-LD
+    var match = html.match(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/);
+    if (!match) throw new Error('No structured data found');
+    var jsonld = JSON.parse(match[1]);
+    if (jsonld['@type'] !== 'Event') throw new Error('Not an event page');
+
+    // Populate form fields
+    if (jsonld.name) document.getElementById('ev-name').value = jsonld.name;
+    if (jsonld.startDate) {
+      var sd = new Date(jsonld.startDate);
+      document.getElementById('ev-start-date').value = sd.toISOString().slice(0,10);
+      document.getElementById('ev-start-time').value = sd.toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',hour12:true});
+    }
+    if (jsonld.endDate) {
+      var ed = new Date(jsonld.endDate);
+      document.getElementById('ev-end-date').value = ed.toISOString().slice(0,10);
+      document.getElementById('ev-end-time').value = ed.toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',hour12:true});
+    }
+    var loc = jsonld.location;
+    if (loc) {
+      if (loc.address && loc.address.streetAddress) document.getElementById('ev-venue').value = loc.address.streetAddress;
+      var city = [loc.address && loc.address.addressLocality, loc.address && loc.address.addressRegion].filter(Boolean).join(', ');
+      if (city) document.getElementById('ev-location').value = city;
+    }
+    if (jsonld.description) document.getElementById('ev-short-desc').value = jsonld.description.slice(0, 200);
+    if (Array.isArray(jsonld.image) && jsonld.image[0]) document.getElementById('ev-image-url').value = jsonld.image[0];
+    document.getElementById('ev-luma-url').value = 'https://luma.com/' + slug;
+    document.getElementById('ev-reg-url').value = 'https://luma.com/' + slug;
+
+    statusEl.textContent = '✓ Event imported! Review the fields and submit.';
+    statusEl.style.color = '#2d4a2f';
+    setTimeout(function(){ closeImport(); }, 1500);
+  }).catch(function(err) {
+    // CORS will block direct fetch; fall back to Luma API
+    fetch('https://api.luma.com/calendar/get-items?period=future&pagination_limit=1', {
+      headers: { 'User-Agent': 'ClawCamp/1.0' }
+    }).catch(function(){});
+    statusEl.textContent = 'Could not auto-import (CORS). Paste the event details manually, or use the Luma URL in the Links section.';
+    statusEl.style.color = '#c62828';
+    document.getElementById('ev-luma-url').value = url;
+    document.getElementById('ev-reg-url').value = url;
+  });
+}
+</script>
+</body>
+</html>

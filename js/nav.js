@@ -4,12 +4,13 @@
   <a href="/" class="logo"><img src="/images/clawcamp-logo.svg" alt="ClawCamp" class="logo-img"></a>\
   <div class="nav-links">\
     <a href="/events" data-nav>Events</a>\
+    <a href="/chapters" data-nav>Chapters</a>\
     <a href="/curriculum" data-nav>Learn</a>\
     <a href="/speakers" data-nav>Mentor</a>\
     <a href="/sponsors" data-nav>Sponsor</a>\
     <a href="/host" data-nav>Host</a>\
     <div class="nav-more">\
-      <button class="nav-more-label">About <span class="chevron">&#9662;</span></button>\
+      <button class="nav-more-label">More <span class="chevron">&#9662;</span></button>\
       <div class="nav-more-dropdown">\
         <a href="/about" data-nav>About ClawCamp</a>\
         <a href="/formats" data-nav>Formats</a>\
@@ -17,12 +18,20 @@
         <a href="/startups" data-nav>Startup Program</a>\
       </div>\
     </div>\
-    <a href="/get-involved" class="nav-cta">Sign Up / Sign In &rarr;</a>\
+    <a href="/get-involved" class="nav-cta" id="nav-cta-btn">Sign Up / Sign In &rarr;</a>\
   </div>\
   <button class="nav-hamburger" aria-label="Menu">&#9776;</button>\
 </nav>';
 
   var footerHTML = '\
+<div class="newsletter-strip" id="newsletter-strip">\
+  <span class="newsletter-label">Subscribe to our Newsletter</span>\
+  <form class="newsletter-form" id="newsletter-form" onsubmit="clawNewsletter(event)">\
+    <input type="email" class="newsletter-input" placeholder="Enter your email" required id="newsletter-email">\
+    <button type="submit" class="newsletter-btn">Subscribe</button>\
+  </form>\
+  <p class="newsletter-msg" id="newsletter-msg"></p>\
+</div>\
 <footer class="site-footer">\
   <div class="footer-inner">\
     <div class="footer-brand">\
@@ -31,16 +40,15 @@
     </div>\
     <div class="footer-links">\
       <div class="footer-col">\
-        <h4>Pages</h4>\
-        <a href="/events">Schedule</a>\
-        <a href="/speakers">Speakers</a>\
-        <a href="/sponsors">Sponsors</a>\
+        <h4>Explore</h4>\
+        <a href="/events">Events Calendar</a>\
+        <a href="/chapters">Chapters</a>\
+        <a href="/curriculum">Workshops &amp; Guides</a>\
+        <a href="/speakers">Speakers &amp; Mentors</a>\
+        <a href="/sponsors">Sponsors &amp; Partners</a>\
         <a href="/host">Start a Camp</a>\
         <a href="/startups">Startup Program</a>\
         <a href="/about">About ClawCamp</a>\
-        <a href="/formats">Formats</a>\
-        <a href="/staff">Leadership</a>\
-        <a href="/curriculum">Curriculum</a>\
       </div>\
       <div class="footer-col">\
         <h4>Connect</h4>\
@@ -48,7 +56,8 @@
         <a href="mailto:events@claw.camp">events@claw.camp</a>\
         <a href="https://discord.gg/clawcamp" target="_blank">Discord</a>\
         <a href="https://linkedin.com/company/clawcamp" target="_blank">LinkedIn</a>\
-        <a href="https://x.com/clawcamp" target="_blank">X</a>\
+        <a href="https://x.com/clawcamp" target="_blank">X / Twitter</a>\
+        <a href="https://lu.ma/ClawCamp" target="_blank">Luma Calendar</a>\
       </div>\
     </div>\
   </div>\
@@ -57,10 +66,8 @@
   </div>\
 </footer>';
 
-  // If a Supabase magic-link lands on any page other than /dashboard, redirect
-  // there so the token can be exchanged properly. This happens when the
-  // emailRedirectTo URL doesn't match the whitelisted redirect URLs in
-  // Supabase Auth settings, causing Supabase to fall back to the site root.
+  // Magic-link intercept: if any page (other than /dashboard) receives
+  // a Supabase auth hash, redirect to /dashboard to exchange the token.
   (function () {
     var hash = window.location.hash;
     var isDashboard = window.location.pathname.replace(/\/$/, '') === '/dashboard';
@@ -68,6 +75,46 @@
       window.location.replace('/dashboard' + hash);
     }
   })();
+
+  // Newsletter subscribe (uses contacts table sub_newsletter flag)
+  window.clawNewsletter = function(e) {
+    e.preventDefault();
+    var email = document.getElementById('newsletter-email').value.trim();
+    var msg = document.getElementById('newsletter-msg');
+    var btn = document.querySelector('.newsletter-btn');
+    if (!email) return;
+    btn.disabled = true;
+    btn.textContent = 'Subscribing...';
+    var SUPABASE_URL = 'https://mrnccntqmkxjazznejfc.supabase.co';
+    var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ybmNjbnRxbWt4amF6em5lamZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMDA3NTksImV4cCI6MjA5MDc3Njc1OX0.T6oFTtYiFTsx6ojuogpZFXAS7tN5-dPzwvmY5V2xFGI';
+    // Upsert by email — sets sub_newsletter=true, form_type=newsletter
+    fetch(SUPABASE_URL + '/rest/v1/contacts', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify({ email: email, sub_newsletter: true, form_type: 'newsletter', email_opt_in: true })
+    }).then(function(r) {
+      if (r.ok || r.status === 201 || r.status === 200) {
+        msg.textContent = 'You\'re subscribed! ✓';
+        msg.style.color = '#2d4a2f';
+        document.getElementById('newsletter-email').value = '';
+      } else {
+        msg.textContent = 'Something went wrong. Try again.';
+        msg.style.color = '#c4500a';
+      }
+      btn.disabled = false;
+      btn.textContent = 'Subscribe';
+    }).catch(function() {
+      msg.textContent = 'Something went wrong. Try again.';
+      msg.style.color = '#c4500a';
+      btn.disabled = false;
+      btn.textContent = 'Subscribe';
+    });
+  };
 
   document.addEventListener('DOMContentLoaded', function () {
     var navEl = document.getElementById('site-nav');
@@ -79,15 +126,27 @@
     var path = window.location.pathname.replace(/\/index\.html$/, '').replace(/\/$/, '') || '/';
     document.querySelectorAll('nav a[data-nav], .nav-more-dropdown a[data-nav]').forEach(function (link) {
       var href = link.getAttribute('href').replace(/\/$/, '');
-      if (path === href || (href === '/' && path === '')) {
+      if (path === href || (href !== '/' && path.startsWith(href))) {
         link.classList.add('nav-link-active');
-        // If active link is inside More dropdown, also highlight the More button
         var moreParent = link.closest('.nav-more');
         if (moreParent) {
           moreParent.querySelector('.nav-more-label').classList.add('nav-link-active');
         }
       }
     });
+
+    // Update nav CTA if user is logged in (swap to Dashboard link)
+    if (window.clawAuth) {
+      clawAuth.getSession().then(function(result) {
+        if (result && result.data && result.data.session) {
+          var btn = document.getElementById('nav-cta-btn');
+          if (btn) {
+            btn.textContent = 'Dashboard →';
+            btn.href = '/dashboard';
+          }
+        }
+      }).catch(function(){});
+    }
 
     // More dropdown toggle
     var moreBtn = document.querySelector('.nav-more-label');
@@ -123,9 +182,28 @@
       hamburger.addEventListener('click', function () {
         var isOpen = navLinks.classList.toggle('nav-open');
         if (navNode) navNode.classList.toggle('menu-open', isOpen);
-        hamburger.textContent = isOpen ? '\u2715' : '\u2630';
+        hamburger.textContent = isOpen ? '✕' : '☰';
         hamburger.setAttribute('aria-label', isOpen ? 'Close menu' : 'Menu');
       });
     }
+
+    // "Happening now" badges — scan all .event-row elements on the page
+    (function addLiveBadges() {
+      var now = new Date();
+      var todayStr = now.getFullYear() + '-' +
+        String(now.getMonth() + 1).padStart(2, '0') + '-' +
+        String(now.getDate()).padStart(2, '0');
+      document.querySelectorAll('.event-row[data-date]').forEach(function(row) {
+        if (row.dataset.date !== todayStr) return;
+        var meta = row.querySelector('.event-meta');
+        if (!meta) return;
+        // Check if a live badge already exists
+        if (meta.querySelector('.live-badge')) return;
+        var badge = document.createElement('span');
+        badge.className = 'live-badge';
+        badge.innerHTML = '<span class="live-dot"></span>Happening today';
+        meta.insertBefore(badge, meta.firstChild);
+      });
+    })();
   });
 })();
