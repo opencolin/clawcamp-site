@@ -11,8 +11,10 @@
 
   window.renderEventCard = function (ev) {
     var a = el('a', 'ev-card');
+    if (ev.featured) a.classList.add('ev-card-featured');
     a.href = ev.link || '#';
     if (ev.link) { a.target = '_blank'; a.rel = 'noopener'; }
+    if (ev.featured) a.appendChild(el('span', 'ev-card-badge', '★ Featured'));
     if (ev.image) {
       var img = el('img', 'ev-card-img');
       img.src = ev.image; img.alt = ev.name || ''; img.loading = 'lazy';

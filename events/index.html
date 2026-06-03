@@ -737,76 +737,14 @@
   </div>
 </div>
 
+<!-- Upcoming Events carousel (featured events lead, then chronological) -->
+<div class="upcoming-carousel-section" id="upcoming-carousel-section" style="display:none;">
+  <h2>📅 Upcoming Events</h2>
+  <div id="upcoming-carousel"></div>
+</div>
+
 <div class="main" id="events-main">
   <div style="text-align:center;padding:48px;color:var(--muted);font-size:14px;" id="events-loading">Loading events...</div>
-
-  <!-- Featured events (time-filtered by applyFilters; hidden once past) -->
-  <a class="featured-event featured-flagship" id="featured-nemoclaw" href="https://luma.com/r16tprwv" target="_blank" data-type="workshop" data-date="2026-06-10" data-city="online">
-    <div class="featured-left">
-      <div class="featured-eyebrow">&#9733; Featured &middot; Online &middot; Free</div>
-      <div class="featured-title">Secure Autonomous Agents<br><span>with NVIDIA NemoClaw</span></div>
-      <div class="featured-details">
-        <span class="featured-detail"><span class="meta-icon">&#128197;</span> Wednesday, June 10, 2026</span>
-        <span class="featured-detail"><span class="meta-icon">&#128205;</span> Online</span>
-        <span class="featured-detail"><span class="meta-icon">&#9201;</span> 9:00 AM &ndash; 10:00 AM PT</span>
-      </div>
-      <p class="featured-desc">NemoClaw &mdash; an open-source blueprint for safer agents &mdash; wraps OpenClaw with a kernel-level sandbox, an L7 egress proxy, and an intent-classifying policy engine to clear enterprise security review.</p>
-      <span class="featured-cta">RSVP &rarr;</span>
-    </div>
-    <div class="featured-img-wrap">
-      <img class="featured-bg" src="https://images.lumacdn.com/cdn-cgi/image/format=auto,fit=cover,dpr=2,background=white,quality=75,width=500,height=500/uploads/y5/9aaedbc3-6a85-448f-b466-1b23e9929f43.jpg" alt="">
-    </div>
-  </a>
-
-  <a class="featured-event featured-flagship" id="featured-buildership" href="https://luma.com/ship.builders" target="_blank" data-type="workshop" data-date="2026-06-14" data-city="san-francisco">
-    <div class="featured-left">
-      <div class="featured-eyebrow">&#9733; Featured &middot; San Francisco &middot; Hackathon</div>
-      <div class="featured-title">BuilderShip<br><span>Hack the High Seas</span></div>
-      <div class="featured-details">
-        <span class="featured-detail"><span class="meta-icon">&#128197;</span> Sunday, June 14, 2026</span>
-        <span class="featured-detail"><span class="meta-icon">&#128205;</span> South Beach Harbor, SF</span>
-        <span class="featured-detail"><span class="meta-icon">&#9201;</span> 9:00 AM &ndash; 9:00 PM</span>
-      </div>
-      <p class="featured-desc">30 builders aboard an 89-foot yacht. Build AI agents with OpenClaw, Nebius, Tavily &amp; Composio. $50K in credits and a DGX Spark on the line.</p>
-      <span class="featured-cta">Apply &rarr;</span>
-    </div>
-    <div class="featured-img-wrap">
-      <img class="featured-bg" src="https://images.lumacdn.com/cdn-cgi/image/format=auto,fit=cover,dpr=2,background=white,quality=75,width=500,height=500/uploads/qu/5f600f28-6d93-40b8-a4b3-e9c60d2c0b0e.png" alt="">
-    </div>
-  </a>
-
-  <a class="featured-event featured-flagship" id="featured-passport" href="https://luma.com/clawcamp-global-passport" target="_blank" data-type="flagship" data-date="2026-06-20" data-city="san-francisco">
-    <div class="featured-left">
-      <div class="featured-eyebrow">&#9733; Featured &middot; SF &amp; Worldwide</div>
-      <div class="featured-title">Global Summer Camp<br><span>Passport</span></div>
-      <div class="featured-details">
-        <span class="featured-detail"><span class="meta-icon">&#128197;</span> Jun 20 &ndash; Aug 2026</span>
-        <span class="featured-detail"><span class="meta-icon">&#128205;</span> San Francisco &amp; Worldwide</span>
-      </div>
-      <p class="featured-desc">Your season pass to ClawCamp Summer Camp events worldwide. RSVP for updates, early ticket access, exclusive discounts, and priority access.</p>
-      <span class="featured-cta">Save the Date &rarr;</span>
-    </div>
-    <div class="featured-img-wrap">
-      <img class="featured-bg" src="https://images.lumacdn.com/cdn-cgi/image/format=auto,fit=cover,dpr=2,background=white,quality=75,width=500,height=500/uploads/a8/09ab0f1b-fc7b-4eda-9c98-e83965e3ecfd.jpg" alt="">
-    </div>
-  </a>
-
-  <a class="featured-event featured-flagship" id="featured-dualtech" href="https://luma.com/dualtechsummitjune26" target="_blank" data-type="community" data-date="2026-06-24" data-city="san-francisco">
-    <div class="featured-left">
-      <div class="featured-eyebrow">&#9733; Featured &middot; San Francisco</div>
-      <div class="featured-title">Dual Tech Summit<br><span>2026</span></div>
-      <div class="featured-details">
-        <span class="featured-detail"><span class="meta-icon">&#128197;</span> Wednesday, June 24, 2026</span>
-        <span class="featured-detail"><span class="meta-icon">&#128205;</span> War Memorial Veterans Building, SF</span>
-        <span class="featured-detail"><span class="meta-icon">&#9201;</span> 9:00 AM &ndash; 5:00 PM</span>
-      </div>
-      <p class="featured-desc">SVH Capital presents a premier summit bridging commercial tech and the defense/public sector &mdash; networking, collaboration, and dual-use innovation.</p>
-      <span class="featured-cta">RSVP &rarr;</span>
-    </div>
-    <div class="featured-img-wrap">
-      <img class="featured-bg" src="https://images.lumacdn.com/cdn-cgi/image/format=auto,fit=cover,dpr=2,background=white,quality=75,width=500,height=500/uploads/aj/0b113202-6c8a-458e-bdd0-ca6fa1ae5175.png" alt="">
-    </div>
-  </a>
 
   <!-- Featured: Workshop: Running OpenClaw on Nebius (Flagship) -->
   <div class="featured-event featured-flagship" data-type="workshop" data-date="2026-04-14" data-city="online">
@@ -3216,6 +3154,7 @@
 
 <script src="/js/config.js"></script>
 <script src="/js/nav.js"></script>
+<script src="/js/carousel.js"></script>
 <script src="/js/supabase.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="/js/clawcamp-map.js"></script>
@@ -3550,6 +3489,7 @@ fetch(SUPABASE_URL + '/rest/v1/events?select=*&order=event_date.asc', {
   renderEvents(events);
   updateCounts();
   applyFilters();
+  buildUpcomingHighlights();
   window._eventsRendered = true;
   loadChapters();
   showOaklandFeatured();
@@ -3580,6 +3520,7 @@ fetch(SUPABASE_URL + '/rest/v1/events?select=*&order=event_date.asc', {
   if (loading) loading.style.display = 'none';
   updateCounts();
   applyFilters();
+  buildUpcomingHighlights();
 });
 
 var currentTimeTab = 'upcoming';
@@ -3660,6 +3601,53 @@ function getToday() {
   return d.getFullYear() + '-' +
     String(d.getMonth() + 1).padStart(2, '0') + '-' +
     String(d.getDate()).padStart(2, '0');
+}
+
+// Featured events lead the Upcoming Events carousel as highlighted cards
+// (matched by normalized URL); no more big stacked hero rows.
+var FEATURED_EVENT_URLS = [
+  'https://luma.com/r16tprwv',
+  'https://luma.com/ship.builders',
+  'https://luma.com/clawcamp-global-passport',
+  'https://luma.com/dualtechsummitjune26'
+];
+function normHref(h) { return (h || '').split('?')[0].split('#')[0].replace(/\/+$/, '').toLowerCase(); }
+function buildUpcomingHighlights() {
+  var section = document.getElementById('upcoming-carousel-section');
+  var container = document.getElementById('upcoming-carousel');
+  if (!section || !container || !window.buildEventCarousel) return;
+  var featuredSet = {};
+  FEATURED_EVENT_URLS.forEach(function(u) { featuredSet[normHref(u)] = 1; });
+  var today = getToday();
+  var rows = Array.prototype.slice.call(document.querySelectorAll('#events-main .event-row[data-date]'));
+  var seen = {}, featured = [], rest = [];
+  rows.forEach(function(r) {
+    var d = r.dataset.date || '';
+    if (!d || d < today) return;
+    var href = (r.getAttribute('href') || '');
+    var key = normHref(href);
+    if (key && seen[key]) return;
+    if (key) seen[key] = 1;
+    var name = (r.querySelector('.event-name') || {}).textContent || '';
+    var metas = r.querySelectorAll('.event-meta .meta-item');
+    var loc = metas[0] ? metas[0].textContent.replace(/^[^A-Za-z0-9]+/, '').trim() : '';
+    var time = metas[1] ? metas[1].textContent.trim() : '';
+    var desc = (r.querySelector('.event-desc') || {}).textContent || '';
+    var imgEl = r.querySelector('.event-img');
+    var dd = new Date(d + 'T12:00:00');
+    var dateText = dd.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    if (time) dateText += ' · ' + time;
+    var card = {
+      name: name, dateText: dateText, location: loc, desc: desc, link: href,
+      image: imgEl ? imgEl.getAttribute('src') : '',
+      ctaText: href.indexOf('luma') >= 0 ? 'RSVP on Luma →' : 'View →',
+      featured: !!featuredSet[key]
+    };
+    (card.featured ? featured : rest).push(card);
+  });
+  var evs = featured.concat(rest.slice(0, 10));
+  if (window.buildEventCarousel(container, evs)) section.style.display = '';
+  else section.style.display = 'none';
 }
 
 function applyFilters() {
