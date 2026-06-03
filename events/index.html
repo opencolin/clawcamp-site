@@ -3736,6 +3736,8 @@ function showOaklandFeatured() {
   if (eventsMain.querySelector('.geo-promoted')) return;
   var oaklandRow = eventsMain.querySelector('.event-row[data-city="oakland"][data-type="flagship"]');
   if (!oaklandRow || oaklandRow.classList.contains('promoted-featured')) return;
+  // Don't promote a past Oakland flagship (the event already happened).
+  if ((oaklandRow.dataset.date || '') < getToday()) return;
   var card = buildFeaturedCard(oaklandRow);
   card.classList.add('geo-promoted');
   oaklandRow.style.display = 'none';
@@ -3754,6 +3756,7 @@ function isInCaliforniaOrNewYork(lat, lon) {
 function forceOaklandFeatured(eventsMain, lat, lon, PROMO_KM) {
   var oaklandRow = eventsMain.querySelector('.event-row[data-city="oakland"][data-type="flagship"]');
   if (!oaklandRow) { showOaklandFeatured(); return; }
+  if ((oaklandRow.dataset.date || '') < getToday()) return; // skip past Oakland flagship
   var nearby = [];
   eventsMain.querySelectorAll('.event-row[data-city]').forEach(function(row) {
     var city = row.dataset.city;
@@ -3793,9 +3796,11 @@ function promoteWithGeo(pos) {
   var flagshipRows = eventsMain.querySelectorAll('.event-row[data-type="flagship"]');
   var closestFlagship = null;
   var closestDist = Infinity;
+  var today = getToday();
   flagshipRows.forEach(function(row) {
     var city = row.dataset.city;
     if (!city || !cityCoords[city]) return;
+    if ((row.dataset.date || '') < today) return; // skip past flagships
     var c = cityCoords[city];
     var dist = haversine(lat, lon, c[0], c[1]);
     if (dist <= PROMO_KM && dist < closestDist) { closestFlagship = row; closestDist = dist; }
