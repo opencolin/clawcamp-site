@@ -95,6 +95,9 @@
       btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
       btn.setAttribute('title', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
     }
+    // Homepage hero (Leaflet map + light-mode styling) follows this single
+    // toggle. clawSyncHero is defined only on the homepage; no-op elsewhere.
+    if (typeof window.clawSyncHero === 'function') window.clawSyncHero(theme);
   }
   window.clawToggleTheme = function () {
     clawApplyTheme(clawCurrentTheme() === 'dark' ? 'light' : 'dark');

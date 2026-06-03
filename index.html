@@ -102,25 +102,7 @@
   .clawcamp-tooltip strong { display: block; margin-bottom: 2px; }
   .clawcamp-tooltip .dot-count { color: var(--rust); font-size: 10px; }
   .clawcamp-tooltip::before { border-top-color: var(--ink) !important; }
-  .hero-map-toggle {
-    position: absolute;
-    top: 90px;
-    right: 20px;
-    z-index: 101;
-    background: rgba(15,14,11,0.7);
-    border: 1px solid rgba(196,84,10,0.3);
-    color: var(--paper);
-    font-size: 18px;
-    width: 32px;
-    height: 32px;
-    border-radius: 4px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(4px);
-  }
-  .hero-map-toggle:hover { background: rgba(196,84,10,0.3); }
+  /* Hero map dark/light is now driven by the single nav theme toggle. */
   .leaflet-control-attribution {
     font-size: 9px !important;
     background: rgba(0,0,0,0.4) !important;
@@ -1007,7 +989,6 @@
 <!-- Hero -->
 <section class="hero">
   <div id="hero-map"></div>
-  <button id="hero-map-toggle" class="hero-map-toggle" title="Toggle map style">☆</button>
   <h1>Join the personal <em>AI</em> revolution.</h1>
   <p class="hero-sub">Learn, build, and share with your local community of AI experts and their agents.</p>
   <div class="hero-actions">
@@ -3379,6 +3360,27 @@
         <span class="rsvp-btn rsvp-primary">RSVP &rarr;</span>
       </div>
     </a>
+    <a class="event-row" href="https://luma.com/4rq8teba" target="_blank" data-type="community" data-date="2026-06-25" data-city="cary">
+      <div class="event-date">
+        <div class="date-day">25</div>
+        <div class="date-dow">Thu</div>
+      </div>
+      <img class="event-img" src="https://images.lumacdn.com/event-covers/bb/ccdaf267-2213-4ffe-bcb1-613173d69d19.jpg" alt="OpenClaw Triangle Meetup - Fourth Edition" loading="lazy">
+      <div class="event-body">
+        <div class="event-top">
+          <span class="event-name">OpenClaw Triangle Meetup - Fourth Edition</span>
+          <span class="event-tag tag-community">Community</span>
+        </div>
+        <div class="event-meta">
+          <span class="meta-item"><span class="meta-icon">&#128205;</span> Cary, NC</span>
+          <span class="meta-item">6:00 PM &ndash; 8:30 PM</span>
+        </div>
+        <p class="event-desc">The fourth in-person gathering for the OpenClaw Triangle community &mdash; hands-on demos, conversation, and networking. Free to attend.</p>
+      </div>
+      <div class="event-action">
+        <span class="rsvp-btn rsvp-primary">RSVP &rarr;</span>
+      </div>
+    </a>
     <a class="event-row" href="https://luma.com/clawconseoul" target="_blank" data-type="community" data-date="2026-06-27" data-city="seoul">
       <div class="event-date">
         <div class="date-day">27</div>
@@ -3395,6 +3397,27 @@
           <span class="meta-item">6:00 PM &ndash; 9:00 PM</span>
         </div>
         <p class="event-desc">Evening gathering featuring personal AI tool demos, Q&amp;A, and networking. Free and open to all.</p>
+      </div>
+      <div class="event-action">
+        <span class="rsvp-btn rsvp-primary">RSVP &rarr;</span>
+      </div>
+    </a>
+    <a class="event-row" href="https://luma.com/obpenxsr" target="_blank" data-type="workshop" data-date="2026-06-27" data-city="dublin">
+      <div class="event-date">
+        <div class="date-day">27</div>
+        <div class="date-dow">Sat</div>
+      </div>
+      <img class="event-img" src="https://images.lumacdn.com/uploads/si/d9ab40b5-4dec-4abf-9238-7d705704cb99.png" alt="OpenClaw: Applied usecases" loading="lazy">
+      <div class="event-body">
+        <div class="event-top">
+          <span class="event-name">OpenClaw: Applied usecases</span>
+          <span class="event-tag tag-workshop">Workshop</span>
+        </div>
+        <div class="event-meta">
+          <span class="meta-item"><span class="meta-icon">&#128205;</span> Dublin, Ireland</span>
+          <span class="meta-item">11:00 AM &ndash; 5:00 PM</span>
+        </div>
+        <p class="event-desc">Third part in the OpenClaw series &mdash; pointing what you've built at the workflows that matter: customer support, go-to-market, and engineering.</p>
       </div>
       <div class="event-action">
         <span class="rsvp-btn rsvp-primary">RSVP &rarr;</span>
@@ -3936,7 +3959,7 @@ var useMetric = true;
 
 // Initialize hero Leaflet map (decorative, auto-scrolling)
 var heroMap = initClawCampMap('hero-map', {
-  mode: 'dark',
+  mode: (document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'),
   interactive: false,
   zoom: 2,
   center: [20, 0],
@@ -3950,25 +3973,19 @@ var heroMap = initClawCampMap('hero-map', {
   }
 });
 
-// Standalone toggle button (outside map stacking context, above nav z-index)
-(function() {
-  var btn = document.getElementById('hero-map-toggle');
+// Hero map + hero styling follow the single site theme toggle (in the nav).
+// nav.js calls window.clawSyncHero(theme) on load and whenever the theme flips,
+// so the one nav button now also flips the hero dark/light (replaces the old
+// standalone map toggle).
+window.clawSyncHero = function(theme) {
   var heroEl = document.querySelector('.hero');
-  var mode = 'dark';
-  try { var saved = localStorage.getItem('clawcamp-map-mode'); if (saved) mode = saved; } catch(e) {}
-  btn.textContent = mode === 'dark' ? '\u2606' : '\u263E';
-  if (mode === 'light') {
-    if (heroEl) heroEl.classList.add('light-mode');
-    document.body.classList.add('map-light-mode');
-  }
-  btn.addEventListener('click', function() {
-    mode = mode === 'dark' ? 'light' : 'dark';
-    if (heroMap) heroMap.setMode(mode);
-    btn.textContent = mode === 'dark' ? '\u2606' : '\u263E';
-    if (heroEl) heroEl.classList.toggle('light-mode', mode === 'light');
-    document.body.classList.toggle('map-light-mode', mode === 'light');
-  });
-})();
+  var light = theme === 'light';
+  if (heroMap) heroMap.setMode(light ? 'light' : 'dark');
+  if (heroEl) heroEl.classList.toggle('light-mode', light);
+  document.body.classList.toggle('map-light-mode', light);
+};
+// Apply immediately to whatever theme the <head> bootstrap already set.
+window.clawSyncHero(document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
 
 function haversine(lat1, lon1, lat2, lon2) {
   var R = 6371;
