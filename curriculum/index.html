@@ -110,6 +110,7 @@
     <p id="total-count">Loading...</p>
     <p>All Levels</p>
     <p>Open Source</p>
+    <a href="#submit" style="display:inline-flex;align-items:center;gap:6px;margin-top:6px;background:var(--rust);color:#fff;padding:9px 18px;border-radius:20px;font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:13px;text-decoration:none;transition:background 0.15s;" onmouseover="this.style.background='#a8420a'" onmouseout="this.style.background='var(--rust)'">+ Submit a Tutorial &rarr;</a>
   </div>
 </header>
 
@@ -120,11 +121,6 @@
       <li style="font-size:15px;color:var(--muted);line-height:1.6;padding:6px 0 6px 18px;position:relative;"><span style="position:absolute;left:0;top:13px;width:5px;height:5px;border-radius:50%;background:var(--rust);display:inline-block;"></span><strong style="color:var(--ink);">We provide example curricula</strong> as starting points for common formats.</li>
       <li style="font-size:15px;color:var(--muted);line-height:1.6;padding:6px 0 6px 18px;position:relative;"><span style="position:absolute;left:0;top:13px;width:5px;height:5px;border-radius:50%;background:var(--rust);display:inline-block;"></span><strong style="color:var(--ink);">Everyone is asked to share back.</strong> When you build something that works, share it in the library.</li>
     </ul>
-  </div>
-
-  <div id="featured-section" style="display:none;">
-    <div class="featured-label">Featured</div>
-    <div class="featured-grid" id="featured-grid"></div>
   </div>
 
   <div class="filter-tabs" id="filter-tabs">
@@ -325,14 +321,8 @@
     filtered.forEach(function(t) { grid.appendChild(buildCard(t)); });
   }
 
-  function renderFeatured() {
-    var featured = tutorials.filter(function(t) { return t.is_featured; });
-    if (featured.length === 0) return;
-    document.getElementById('featured-section').style.display = '';
-    var grid = document.getElementById('featured-grid');
-    grid.replaceChildren();
-    featured.forEach(function(t) { grid.appendChild(buildCard(t)); });
-  }
+  // Featured section removed — kept as a no-op so existing call sites are safe.
+  function renderFeatured() {}
 
   function updateCounts() {
     var counts = { all: tutorials.length, workshop: 0, guide: 0, tool: 0, thread: 0 };

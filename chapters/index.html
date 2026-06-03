@@ -404,7 +404,7 @@
     <span class="globe">🌍</span>
     <h1>ClawCamp Chapters</h1>
     <p>Local communities bringing AI builders together &mdash; find yours or start one.</p>
-    <button class="btn-rust" onclick="document.getElementById('start-chapter-section').scrollIntoView({behavior:'smooth'})">+ Start a Chapter</button>
+    <a class="btn-rust" href="/host">+ Start a Chapter</a>
   </div>
 
   <div class="chapters-search-wrap">
@@ -421,44 +421,15 @@
       <div class="chapters-loading" id="chapters-loading">Loading chapters…</div>
     </div>
 
-    <p class="chapters-empty" id="chapters-empty">No chapters found matching "<span id="search-term"></span>" &mdash; be the first to start one!</p>
+    <p class="chapters-empty" id="chapters-empty">No chapters found matching "<span id="search-term"></span>" &mdash; <a href="/host">be the first to start one!</a></p>
 
     <!-- Start a chapter -->
-    <div id="start-chapter-section">
-      <div class="start-chapter-banner">
-        <div>
-          <h3>+ Apply to create a new chapter</h3>
-          <p>Start a ClawCamp chapter in your city and become a captain.</p>
-        </div>
-        <button class="btn-rust" onclick="toggleStartForm()">Start Application</button>
+    <div class="start-chapter-banner">
+      <div>
+        <h3>+ Don't see your city?</h3>
+        <p>Start a ClawCamp chapter in your city and become a captain.</p>
       </div>
-
-      <div class="start-form-card" id="start-form-card">
-        <h3>🌍 Apply to Start a Chapter</h3>
-        <div class="form-field">
-          <label>City / Region <span>*</span></label>
-          <input type="text" id="chapter-city" placeholder="e.g. Austin, TX" required>
-          <p class="form-hint">Where you want to organise ClawCamp events</p>
-        </div>
-        <div class="form-field">
-          <label>Your Name <span>*</span></label>
-          <input type="text" id="chapter-name-input" placeholder="Your full name">
-        </div>
-        <div class="form-field">
-          <label>Email <span>*</span></label>
-          <input type="email" id="chapter-email" placeholder="you@example.com">
-        </div>
-        <div class="form-field">
-          <label>Tell us about your community <span>*</span></label>
-          <textarea id="chapter-about" rows="5"
-            placeholder="Who are you? What's the AI scene like in your city? Why do you want to captain a ClawCamp chapter?"></textarea>
-        </div>
-        <div class="form-actions">
-          <button class="btn-rust" onclick="submitChapterApp()">Start Application</button>
-          <button class="btn-cancel-link" onclick="toggleStartForm()">Cancel</button>
-          <span class="form-status" id="chapter-form-status"></span>
-        </div>
-      </div>
+      <a class="btn-rust" href="/host">Start a Chapter &rarr;</a>
     </div>
   </div>
 </div>
@@ -650,9 +621,17 @@ function buildChapterCard(ch, stat) {
   // lowercased name + city so typing either matches.
   card.dataset.name = (name + ' ' + (ch.city || '')).toLowerCase().trim();
   if (ch.slug) card.id = 'chapter-' + ch.slug;
-  // Clicking the card opens the join modal exactly as before. Pass ch.id (+slug)
-  // so the modal can submit a REAL chapter_follow row (see submitJoin).
-  card.addEventListener('click', function() { openJoin(name, location, emoji, ch.id, ch.slug); });
+  // Clicking the card opens the city page (?slug=...) showing all events —
+  // upcoming and past — in that chapter. Falls back to the join modal only if
+  // a chapter has no slug (shouldn't happen for real chapters).
+  card.style.cursor = 'pointer';
+  card.addEventListener('click', function() {
+    if (ch.slug) {
+      window.location.href = '/chapters/?slug=' + encodeURIComponent(ch.slug);
+    } else {
+      openJoin(name, location, emoji, ch.id, ch.slug);
+    }
+  });
 
   // Cover: per-chapter photo (e.g. SF Golden Gate) if set, else the gradient.
   var cover = document.createElement('div');
@@ -1030,64 +1009,6 @@ function renderEventRow(ev) {
   a.appendChild(action);
 
   return a;
-}
-
-// ===========================================================================
-// START-A-CHAPTER APPLICATION FORM (unchanged — writes to contacts)
-// ===========================================================================
-function toggleStartForm() {
-  var form = document.getElementById('start-form-card');
-  form.classList.toggle('open');
-  if (form.classList.contains('open')) {
-    form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
-}
-
-function submitChapterApp() {
-  var city = document.getElementById('chapter-city').value.trim();
-  var name = document.getElementById('chapter-name-input').value.trim();
-  var email = document.getElementById('chapter-email').value.trim();
-  var about = document.getElementById('chapter-about').value.trim();
-  var status = document.getElementById('chapter-form-status');
-  if (!city || !email || !about) {
-    status.textContent = 'Please fill in all required fields.';
-    status.style.color = '#c62828';
-    return;
-  }
-  status.textContent = 'Submitting...';
-  status.style.color = '';
-  fetch(SUPABASE_URL + '/rest/v1/contacts', {
-    method: 'POST',
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY,
-      'Content-Type': 'application/json',
-      'Prefer': 'resolution=merge-duplicates,return=minimal'
-    },
-    body: JSON.stringify({
-      email: email,
-      name: name,
-      city: city,
-      about: about,
-      form_type: 'chapter_application',
-      message: 'Chapter application for: ' + city + '\n\n' + about
-    })
-  }).then(function(r) {
-    if (r.ok || r.status === 201) {
-      status.textContent = 'Application submitted! We\'ll be in touch. ✓';
-      status.style.color = '#2d4a2f';
-      document.getElementById('chapter-city').value = '';
-      document.getElementById('chapter-name-input').value = '';
-      document.getElementById('chapter-email').value = '';
-      document.getElementById('chapter-about').value = '';
-    } else {
-      status.textContent = 'Error submitting. Try again.';
-      status.style.color = '#c62828';
-    }
-  }).catch(function() {
-    status.textContent = 'Error submitting. Try again.';
-    status.style.color = '#c62828';
-  });
 }
 
 // ===========================================================================

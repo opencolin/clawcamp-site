@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <script>(function(){try{var t=localStorage.getItem("claw-theme");if(!t)t=(window.matchMedia&&matchMedia("(prefers-color-scheme:dark)").matches)?"dark":"light";if(t==="dark")document.documentElement.setAttribute("data-theme","dark");}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Start a Camp — ClawCamp</title>
+<title>Start a Chapter — ClawCamp</title>
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -262,16 +262,16 @@
 <div id="site-nav"></div>
 
 <header class="page-header">
-  <h1>Host Your<br><em>Own Camp</em></h1>
+  <h1>Start a<br><em>Chapter</em></h1>
   <div class="header-meta">
-    <p>Camp Director Program</p>
+    <p>Chapter Captain Program</p>
     <p>Open to Everyone</p>
-    <p>Your Event, Your Way</p>
+    <p>Your City, Your Community</p>
   </div>
 </header>
 
 <div class="host-intro">
-  <p>You don't need permission. You don't need a budget. You need a space, a date, and the willingness to bring people together. Here's everything you need to know.</p>
+  <p>You don't need permission. You don't need a budget. You need a city, a community, and the willingness to bring AI builders together. Start a ClawCamp chapter where you live &mdash; here's everything you need to know.</p>
 </div>
 
 <div class="content-block">
@@ -316,76 +316,37 @@
 <div class="content-block">
   <h2>How to <em>Apply</em></h2>
   <ol class="steps-list">
-    <li><span><strong>Fill out the application below</strong> &mdash; tell us about yourself, your city, and the event you want to run</span></li>
+    <li><span><strong>Fill out the application below</strong> &mdash; tell us about yourself, your city, and the community you want to build</span></li>
     <li><span><strong>We'll reach out within 5 business days</strong> to confirm your role and answer questions</span></li>
     <li><span><strong>Sign the Host Agreement</strong> &mdash; a one-page document that protects you and ClawCamp</span></li>
     <li><span><strong>List your event on the global calendar</strong> &mdash; submit your Luma link before publishing</span></li>
     <li><span><strong>Run your camp</strong> &mdash; we'll promote it to the network</span></li>
   </ol>
 
-  <form class="camp-form" id="host-form">
+  <div class="camp-form" id="chapter-form">
     <div class="form-row">
       <div class="form-group">
-        <label for="host-name">Full Name *</label>
-        <input type="text" id="host-name" name="name" required placeholder="Your name">
+        <label for="chapter-name-input">Your Name *</label>
+        <input type="text" id="chapter-name-input" name="name" placeholder="Your full name">
       </div>
       <div class="form-group">
-        <label for="host-email">Email *</label>
-        <input type="email" id="host-email" name="email" required placeholder="you@example.com">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label for="host-phone">Phone Number *</label>
-        <input type="tel" id="host-phone" name="phone" required placeholder="+1 (555) 000-0000">
-      </div>
-      <div class="form-group">
-        <label for="host-city">City *</label>
-        <input type="text" id="host-city" name="city" required placeholder="e.g. Oakland, CA">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label for="host-format">Event Format</label>
-        <select id="host-format" name="format">
-          <option value="">Select a format</option>
-          <option value="workshop">OpenClaw Workshop</option>
-          <option value="deep-dive">Deep Dive Workshop</option>
-          <option value="unconference">Unconference</option>
-          <option value="demo-day">Demo Day</option>
-          <option value="show-and-tell">Show &amp; Tell</option>
-          <option value="startup-showcase">Startup Showcase</option>
-          <option value="online">Online Event</option>
-          <option value="other">Other / Multiple</option>
-        </select>
-        <p class="form-note" style="margin-top:4px;">Not sure? <a href="/formats" style="color:var(--rust);text-decoration:underline;">Explore event formats &rarr;</a></p>
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label for="host-date">Proposed Date</label>
-        <input type="date" id="host-date" name="proposed_date">
-      </div>
-      <div class="form-group">
-        <label for="host-venue">Venue (if known)</label>
-        <input type="text" id="host-venue" name="venue" placeholder="Venue name or TBD">
+        <label for="chapter-email">Email *</label>
+        <input type="email" id="chapter-email" name="email" required placeholder="you@example.com">
       </div>
     </div>
     <div class="form-group">
-      <label for="host-about">Tell Us About Yourself *</label>
-      <textarea id="host-about" name="about" required placeholder="What's your background? Have you organized events before? Why do you want to run a ClawCamp?"></textarea>
+      <label for="chapter-city">City / Region *</label>
+      <input type="text" id="chapter-city" name="city" required placeholder="e.g. Austin, TX">
+      <p class="form-note" style="margin-top:4px;">Where you want to organize ClawCamp events.</p>
     </div>
     <div class="form-group">
-      <label for="host-details">Event Details</label>
-      <textarea id="host-details" name="event_details" placeholder="Describe the event you want to run &mdash; expected size, target audience, any co-organizers or sponsors lined up"></textarea>
+      <label for="chapter-about">Tell Us About Your Community *</label>
+      <textarea id="chapter-about" name="about" required placeholder="Who are you? What's the AI scene like in your city? Why do you want to captain a ClawCamp chapter?"></textarea>
     </div>
-    <input type="hidden" name="_subject" value="New Host Application">
-    <label style="font-size:14px;color:var(--ink);text-transform:none;letter-spacing:0;display:flex;align-items:center;gap:8px;cursor:pointer;font-family:'Bricolage Grotesque',sans-serif;">
-      <input type="checkbox" name="email_opt_in" value="yes" checked> Yes, send me updates about upcoming ClawCamp events and community news
-    </label>
-    <button type="submit" class="form-submit">Submit Application &rarr;</button>
+    <button type="button" class="form-submit" onclick="submitChapterApp()">Submit Application &rarr;</button>
     <p class="form-note">We'll get back to you within 5 business days.</p>
-  </form>
+    <p class="form-note" id="chapter-form-status" style="margin-top:0;"></p>
+  </div>
 </div>
 
 <div class="content-block">
@@ -450,10 +411,10 @@
 <div class="cta-band">
   <div>
     <h3>Ready to start?</h3>
-    <p>Apply to become a Camp Director and run a camp in your city.</p>
+    <p>Apply to start a ClawCamp chapter and bring AI builders together in your city.</p>
   </div>
   <div class="cta-band-actions">
-    <a href="mailto:hello@claw.camp?subject=Host%20Application" class="btn-dark">Apply Now &rarr;</a>
+    <a href="#chapter-form" class="btn-dark">Apply Now &rarr;</a>
     <a href="/formats" class="btn-outline">Explore Formats</a>
   </div>
 </div>
@@ -462,5 +423,58 @@
 <script src="/js/config.js"></script>
 <script src="/js/nav.js"></script>
 <script src="/js/supabase.js"></script>
+<script>
+// Start-a-chapter application — writes to the contacts table (form_type=chapter_application).
+// Moved here from /chapters so the application lives on the Start a Chapter page.
+var SUPABASE_URL = window.CLAWCAMP_CONFIG.SUPABASE_URL;
+var SUPABASE_KEY = window.CLAWCAMP_CONFIG.SUPABASE_ANON_KEY;
+
+function submitChapterApp() {
+  var city = document.getElementById('chapter-city').value.trim();
+  var name = document.getElementById('chapter-name-input').value.trim();
+  var email = document.getElementById('chapter-email').value.trim();
+  var about = document.getElementById('chapter-about').value.trim();
+  var status = document.getElementById('chapter-form-status');
+  if (!city || !email || !about) {
+    status.textContent = 'Please fill in all required fields.';
+    status.style.color = '#c62828';
+    return;
+  }
+  status.textContent = 'Submitting...';
+  status.style.color = '';
+  fetch(SUPABASE_URL + '/rest/v1/contacts', {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'resolution=merge-duplicates,return=minimal'
+    },
+    body: JSON.stringify({
+      email: email,
+      name: name,
+      city: city,
+      about: about,
+      form_type: 'chapter_application',
+      message: 'Chapter application for: ' + city + '\n\n' + about
+    })
+  }).then(function(r) {
+    if (r.ok || r.status === 201) {
+      status.textContent = 'Application submitted! We\'ll be in touch. ✓';
+      status.style.color = '#2d4a2f';
+      document.getElementById('chapter-city').value = '';
+      document.getElementById('chapter-name-input').value = '';
+      document.getElementById('chapter-email').value = '';
+      document.getElementById('chapter-about').value = '';
+    } else {
+      status.textContent = 'Error submitting. Try again.';
+      status.style.color = '#c62828';
+    }
+  }).catch(function() {
+    status.textContent = 'Error submitting. Try again.';
+    status.style.color = '#c62828';
+  });
+}
+</script>
 </body>
 </html>

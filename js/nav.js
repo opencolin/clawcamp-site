@@ -8,7 +8,7 @@
     <a href="/curriculum" data-nav>Tutorials</a>\
     <a href="/speakers" data-nav>Speakers</a>\
     <a href="/sponsors" data-nav>Sponsors</a>\
-    <a href="/host" data-nav>Localhosts</a>\
+    <a href="/host" data-nav>Start a Chapter</a>\
     <div class="nav-more">\
       <button class="nav-more-label">More <span class="chevron">&#9662;</span></button>\
       <div class="nav-more-dropdown">\
@@ -47,7 +47,7 @@
         <a href="/curriculum">Workshops &amp; Guides</a>\
         <a href="/speakers">Speakers &amp; Mentors</a>\
         <a href="/sponsors">Sponsors &amp; Partners</a>\
-        <a href="/host">Start a Camp</a>\
+        <a href="/host">Start a Chapter</a>\
         <a href="/startups">Startup Program</a>\
         <a href="/about">About ClawCamp</a>\
       </div>\
