@@ -1130,6 +1130,12 @@
   </div>
 </div>
 
+<!-- Upcoming Events carousel (populated from the upcoming list by buildUpcomingHighlights) -->
+<div class="upcoming-carousel-section" id="upcoming-carousel-section" style="display:none;">
+  <h2>📅 Upcoming Events</h2>
+  <div id="upcoming-carousel"></div>
+</div>
+
 <div class="main" id="events-main">
   <div style="text-align:center;padding:48px;color:var(--muted);font-size:14px;" id="events-loading">Loading events...</div>
 
@@ -3636,6 +3642,7 @@
 <div id="site-footer"></div>
 <script src="/js/config.js"></script>
 <script src="/js/nav.js"></script>
+<script src="/js/carousel.js"></script>
 <script src="/js/supabase.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="/js/clawcamp-map.js"></script>
@@ -3960,6 +3967,7 @@ fetch(SUPABASE_URL + '/rest/v1/events?select=*&order=event_date.asc', {
   updateCounts();
   applyFilters();
   buildRecentEvents();
+  buildUpcomingHighlights();
   window._eventsRendered = true;
   showOaklandFeatured();
   // Populate hero map dots from live event data
@@ -3984,6 +3992,7 @@ fetch(SUPABASE_URL + '/rest/v1/events?select=*&order=event_date.asc', {
   updateCounts();
   applyFilters();
   buildRecentEvents();
+  buildUpcomingHighlights();
 });
 
 var currentTimeTab = 'upcoming';
@@ -4383,6 +4392,7 @@ function sortEventsByDistance() {
 
   applyFilters();
   buildRecentEvents();
+  buildUpcomingHighlights();
 }
 
 function setUserLocation(lat, lon, label) {
@@ -4538,6 +4548,42 @@ function buildRecentEvents() {
     if (btn) btn.textContent = 'View →';
     currentSection.appendChild(clone);
   });
+}
+
+// Build the "Upcoming Events" carousel from the upcoming event rows already in
+// #events-main (works off the same data the list uses, so it's always populated).
+function buildUpcomingHighlights() {
+  var section = document.getElementById('upcoming-carousel-section');
+  var container = document.getElementById('upcoming-carousel');
+  if (!section || !container || !window.buildEventCarousel) return;
+  var today = getToday();
+  var rows = Array.prototype.slice.call(document.querySelectorAll('#events-main .event-row[data-date]'));
+  var seen = {}, evs = [];
+  rows.forEach(function(r) {
+    var d = r.dataset.date || '';
+    if (!d || d < today) return;
+    var href = (r.getAttribute('href') || '');
+    var key = href.split('?')[0].replace(/\/+$/, '');
+    if (key && seen[key]) return;
+    if (key) seen[key] = 1;
+    var name = (r.querySelector('.event-name') || {}).textContent || '';
+    var metas = r.querySelectorAll('.event-meta .meta-item');
+    var loc = metas[0] ? metas[0].textContent.replace(/^[^A-Za-z0-9]+/, '').trim() : '';
+    var time = metas[1] ? metas[1].textContent.trim() : '';
+    var desc = (r.querySelector('.event-desc') || {}).textContent || '';
+    var imgEl = r.querySelector('.event-img');
+    var dd = new Date(d + 'T12:00:00');
+    var dateText = dd.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    if (time) dateText += ' · ' + time;
+    evs.push({
+      name: name, dateText: dateText, location: loc, desc: desc, link: href,
+      image: imgEl ? imgEl.getAttribute('src') : '',
+      ctaText: href.indexOf('luma') >= 0 ? 'RSVP on Luma →' : 'View →'
+    });
+  });
+  evs = evs.slice(0, 10); // rows are already in chronological order
+  if (window.buildEventCarousel(container, evs)) section.style.display = '';
+  else section.style.display = 'none';
 }
 
 function updateCounts() {
