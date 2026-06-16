@@ -4,15 +4,15 @@
 <meta charset="UTF-8">
 <script>(function(){try{var t=localStorage.getItem("claw-theme");if(!t)t=(window.matchMedia&&matchMedia("(prefers-color-scheme:dark)").matches)?"dark":"light";if(t==="dark")document.documentElement.setAttribute("data-theme","dark");}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Free Perks — ClawCamp</title>
+<title>Free Perks for Claw Campers — ClawCamp</title>
 <meta name="description" content="Free credits and tools for ClawCamp builders — Nebius Token Factory, Nebius AI Cloud, and Tavily. Claim your promo codes.">
-<meta property="og:title" content="Free Perks — ClawCamp">
+<meta property="og:title" content="Free Perks for Claw Campers — ClawCamp">
 <meta property="og:description" content="Free credits and tools for ClawCamp builders — Nebius Token Factory, Nebius AI Cloud, and Tavily. Claim your promo codes.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://claw.camp/free">
 <meta property="og:image" content="https://claw.camp/images/og-default.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Free Perks — ClawCamp">
+<meta name="twitter:title" content="Free Perks for Claw Campers — ClawCamp">
 <meta name="twitter:description" content="Free credits and tools for ClawCamp builders — claim your promo codes.">
 <meta name="twitter:image" content="https://claw.camp/images/og-default.png">
 <link rel="canonical" href="https://claw.camp/free">
@@ -22,6 +22,9 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bricolage+Grotesque:wght@300;400;600;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/shared.css">
 <style>
+  .free-topbar { padding: 26px 48px 0; }
+  .free-logo { display: inline-block; line-height: 0; }
+  .free-logo img { height: 34px; width: auto; display: block; }
   .free-intro { padding: 40px 48px 0; max-width: 760px; }
   .free-intro p { font-size: 18px; color: var(--muted); line-height: 1.7; }
 
@@ -145,7 +148,7 @@
   .perk-howto:hover { color: var(--rust); border-bottom-color: var(--rust); }
 
   @media (max-width: 768px) {
-    .free-intro, .perk-section, .free-note, .redeem-section { padding-left: 20px; padding-right: 20px; }
+    .free-topbar, .free-intro, .perk-section, .free-note, .redeem-section { padding-left: 20px; padding-right: 20px; }
     .free-cta-band { margin-left: 20px; margin-right: 20px; }
     .gif-portrait { max-height: 72vh; }
   }
@@ -153,8 +156,12 @@
 </head>
 <body>
 
+<div class="free-topbar">
+  <a href="/" class="free-logo" aria-label="ClawCamp home"><img src="/images/clawcamp-logo.svg" alt="ClawCamp"></a>
+</div>
+
 <header class="page-header">
-  <h1>Free<br><em>Perks</em></h1>
+  <h1>Free Perks for<br><em>Claw Campers</em></h1>
   <div class="header-meta">
     <p>For ClawCamp Builders</p>
     <p>Partner Credits</p>
@@ -213,6 +220,7 @@
         <span class="code-copy">Copy</span>
       </button>
       <a class="btn-rust perk-cta" href="https://tavily.com" target="_blank" rel="noopener">Sign up at tavily.com &rarr;</a>
+      <a class="perk-howto" href="#redeem-tavily">How to apply the code &darr;</a>
     </div>
 
   </div>
@@ -220,7 +228,7 @@
 
 <div class="redeem-section">
   <h2>How to redeem</h2>
-  <p class="redeem-sub">Quick walkthroughs for the Nebius credits.</p>
+  <p class="redeem-sub">Quick walkthroughs for each perk.</p>
 
   <div class="redeem-block" id="redeem-token-factory">
     <h3><span class="redeem-brand">Token Factory</span> &mdash; apply your promo code</h3>
@@ -247,6 +255,16 @@
       <li>Click <strong>Copy Tenant ID</strong></li>
     </ol>
     <img class="redeem-gif gif-wide" src="/images/free/aicloud.gif" alt="Click the tenant name, open the three-dots menu, and click Copy Tenant ID" loading="lazy">
+  </div>
+
+  <div class="redeem-block" id="redeem-tavily">
+    <h3><span class="redeem-brand">Tavily</span> &mdash; apply your promo code</h3>
+    <p class="redeem-intro">Add the bonus credits to your Tavily account at checkout:</p>
+    <ol class="redeem-steps">
+      <li>Sign up at <a href="https://tavily.com" target="_blank" rel="noopener">tavily.com</a></li>
+      <li>Click <strong>Upgrade</strong></li>
+      <li>Enter the promo code (<code>TVLY-7CCN692Z</code>) at checkout</li>
+    </ol>
   </div>
 </div>
 
