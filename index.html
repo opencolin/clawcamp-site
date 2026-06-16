@@ -4193,9 +4193,13 @@ function applyFilters() {
     } else {
       typeMatch = type === currentTypeFilter;
     }
-    // Distance is informational only (shown as a badge by sortEventsByDistance).
-    // Never hide events for being far away — users can scroll.
-    row.style.display = (timeMatch && typeMatch) ? '' : 'none';
+    // When the user has searched/set a location, only show events within 100 miles
+    // (geo-promoted events always show). Otherwise distance is informational only.
+    var distMatch = true;
+    if (sortByDistance && userLat && !row.classList.contains('geo-promoted')) {
+      distMatch = getDistanceForCity(city) <= 160.934; // 100 miles in km
+    }
+    row.style.display = (timeMatch && typeMatch && distMatch) ? '' : 'none';
   });
   document.querySelectorAll('#events-main .month-section').forEach(function(section) {
     var visible = section.querySelectorAll('.event-row:not([style*="display: none"])');

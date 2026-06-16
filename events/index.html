@@ -3819,7 +3819,13 @@ function applyFilters() {
     } else {
       chapterMatch = (row.dataset.chapterId || '') === String(currentChapterFilter);
     }
-    row.style.display = (timeMatch && typeMatch && chapterMatch) ? '' : 'none';
+    // When the user has searched/set a location, only show events within 100 miles
+    // (geo-promoted events always show).
+    var distMatch = true;
+    if (sortByDistance && userLat && !row.classList.contains('geo-promoted')) {
+      distMatch = getDistanceForCity(city) <= 160.934; // 100 miles in km
+    }
+    row.style.display = (timeMatch && typeMatch && chapterMatch && distMatch) ? '' : 'none';
   });
   document.querySelectorAll('.month-section').forEach(function(section) {
     var visible = section.querySelectorAll('.event-row:not([style*="display: none"])');
