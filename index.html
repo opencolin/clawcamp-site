@@ -1111,12 +1111,6 @@
   </div>
 </div>
 
-<!-- Upcoming Events carousel (populated from the upcoming list by buildUpcomingHighlights) -->
-<div class="upcoming-carousel-section" id="upcoming-carousel-section" style="display:none;">
-  <h2>📅 Upcoming Events</h2>
-  <div id="upcoming-carousel"></div>
-</div>
-
 <div class="main" id="events-main">
   <div style="text-align:center;padding:48px;color:var(--muted);font-size:14px;" id="events-loading">Loading events...</div>
 
@@ -3597,7 +3591,6 @@
 <div id="site-footer"></div>
 <script src="/js/config.js"></script>
 <script src="/js/nav.js"></script>
-<script src="/js/carousel.js"></script>
 <script src="/js/supabase.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="/js/clawcamp-map.js"></script>
@@ -3922,7 +3915,6 @@ fetch(SUPABASE_URL + '/rest/v1/events?select=*&order=event_date.asc', {
   updateCounts();
   applyFilters();
   buildRecentEvents();
-  buildUpcomingHighlights();
   window._eventsRendered = true;
   showOaklandFeatured();
   // Populate hero map dots from live event data
@@ -3947,7 +3939,6 @@ fetch(SUPABASE_URL + '/rest/v1/events?select=*&order=event_date.asc', {
   updateCounts();
   applyFilters();
   buildRecentEvents();
-  buildUpcomingHighlights();
 });
 
 var currentTimeTab = 'upcoming';
@@ -4341,7 +4332,6 @@ function sortEventsByDistance() {
 
   applyFilters();
   buildRecentEvents();
-  buildUpcomingHighlights();
 }
 
 function setUserLocation(lat, lon, label) {
@@ -4501,56 +4491,7 @@ function buildRecentEvents() {
 
 // Featured events surface as highlighted cards AT THE FRONT of the Upcoming
 // Events carousel (no more big stacked hero rows). Match is by normalized URL.
-var FEATURED_EVENT_URLS = [
-  'https://luma.com/r16tprwv',                 // Secure Agents w/ NVIDIA NemoClaw
-  'https://luma.com/ship.builders',            // BuilderShip
-  'https://luma.com/clawcamp-global-passport', // Global Summer Camp Passport
-  'https://luma.com/dualtechsummitjune26'      // Dual Tech Summit 2026
-];
-function normHref(h) { return (h || '').split('?')[0].split('#')[0].replace(/\/+$/, '').toLowerCase(); }
-
-// Build the "Upcoming Events" carousel from the upcoming event rows already in
-// #events-main (works off the same data the list uses, so it's always populated).
-// Featured events are flagged and sorted to the front.
-function buildUpcomingHighlights() {
-  var section = document.getElementById('upcoming-carousel-section');
-  var container = document.getElementById('upcoming-carousel');
-  if (!section || !container || !window.buildEventCarousel) return;
-  var featuredSet = {};
-  FEATURED_EVENT_URLS.forEach(function(u) { featuredSet[normHref(u)] = 1; });
-  var today = getToday();
-  var rows = Array.prototype.slice.call(document.querySelectorAll('#events-main .event-row[data-date]'));
-  var seen = {}, featured = [], rest = [];
-  rows.forEach(function(r) {
-    var d = r.dataset.date || '';
-    if (!d || d < today) return;
-    var href = (r.getAttribute('href') || '');
-    var key = normHref(href);
-    if (key && seen[key]) return;
-    if (key) seen[key] = 1;
-    var name = (r.querySelector('.event-name') || {}).textContent || '';
-    var metas = r.querySelectorAll('.event-meta .meta-item');
-    var loc = metas[0] ? metas[0].textContent.replace(/^[^A-Za-z0-9]+/, '').trim() : '';
-    var time = metas[1] ? metas[1].textContent.trim() : '';
-    var desc = (r.querySelector('.event-desc') || {}).textContent || '';
-    var imgEl = r.querySelector('.event-img');
-    var dd = new Date(d + 'T12:00:00');
-    var dateText = dd.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-    if (time) dateText += ' · ' + time;
-    var card = {
-      name: name, dateText: dateText, location: loc, desc: desc, link: href,
-      image: imgEl ? imgEl.getAttribute('src') : '',
-      ctaText: href.indexOf('luma') >= 0 ? 'RSVP on Luma →' : 'View →',
-      featured: !!featuredSet[key]
-    };
-    (card.featured ? featured : rest).push(card);
-  });
-  // Featured first (chronological within group), then the rest. Cap the tail so
-  // the carousel stays snappy but always shows every featured event.
-  var evs = featured.concat(rest.slice(0, 10));
-  if (window.buildEventCarousel(container, evs)) section.style.display = '';
-  else section.style.display = 'none';
-}
+// Upcoming Events carousel removed — featured events now appear inline in the event list below.
 
 function updateCounts() {
   var today = getToday();
