@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script>(function(){try{var t=localStorage.getItem("claw-theme");if(!t)t=(window.matchMedia&&matchMedia("(prefers-color-scheme:dark)").matches)?"dark":"light";if(t==="dark")document.documentElement.setAttribute("data-theme","dark");}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Free Perks — ClawCamp</title>
+<meta name="description" content="Free credits and tools for ClawCamp builders — Nebius Token Factory, Nebius AI Cloud, and Tavily. Claim your promo codes.">
+<meta property="og:title" content="Free Perks — ClawCamp">
+<meta property="og:description" content="Free credits and tools for ClawCamp builders — Nebius Token Factory, Nebius AI Cloud, and Tavily. Claim your promo codes.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://claw.camp/free">
+<meta property="og:image" content="https://claw.camp/images/og-default.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Free Perks — ClawCamp">
+<meta name="twitter:description" content="Free credits and tools for ClawCamp builders — claim your promo codes.">
+<meta name="twitter:image" content="https://claw.camp/images/og-default.png">
+<link rel="canonical" href="https://claw.camp/free">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bricolage+Grotesque:wght@300;400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/shared.css">
+<style>
+  .free-intro { padding: 40px 48px 0; max-width: 760px; }
+  .free-intro p { font-size: 18px; color: var(--muted); line-height: 1.7; }
+
+  .perk-section { padding: 32px 48px 16px; }
+  .perk-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 22px;
+    max-width: 1120px;
+  }
+  .perk-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--sand);
+    border-radius: 12px;
+    background: var(--surface);
+    padding: 28px 26px 26px;
+    overflow: hidden;
+    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  }
+  .perk-card::before {
+    content: "";
+    position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    background: var(--rust);
+  }
+  .perk-card:hover { border-color: var(--ink); transform: translateY(-2px); box-shadow: 0 10px 30px rgba(var(--shadow-rgb, 15,14,11), 0.08); }
+
+  .perk-eyebrow {
+    font-family: 'DM Mono', monospace; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--rust); margin-bottom: 12px;
+  }
+  .perk-brand {
+    font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.04em;
+    color: var(--muted); margin-bottom: 6px;
+  }
+  .perk-title {
+    font-size: 23px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15;
+    color: var(--ink); margin-bottom: 12px;
+  }
+  .perk-amount {
+    display: inline-block; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800;
+    font-size: 15px; color: var(--moss); background: var(--moss-light);
+    padding: 5px 12px; border-radius: 16px; margin-bottom: 14px; align-self: flex-start;
+  }
+  .perk-desc { font-size: 14.5px; color: var(--muted); line-height: 1.6; margin-bottom: 18px; flex: 1; }
+
+  .perk-label {
+    font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--muted); margin-bottom: 7px;
+  }
+  .code-chip {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    width: 100%; text-align: left; cursor: pointer; margin-bottom: 18px;
+    font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 500; color: var(--ink);
+    background: var(--cream); border: 1px dashed var(--sand); border-radius: 8px;
+    padding: 12px 14px; transition: border-color 0.15s, background 0.15s;
+  }
+  .code-chip:hover { border-color: var(--rust); }
+  .code-chip .code-text { letter-spacing: 0.02em; }
+  .code-chip .code-copy {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--rust); white-space: nowrap; flex-shrink: 0;
+  }
+  .code-chip.copied { border-color: var(--moss); border-style: solid; }
+  .code-chip.copied .code-copy { color: var(--moss); }
+
+  .perk-cta { align-self: flex-start; }
+
+  .free-note {
+    padding: 8px 48px 0; max-width: 760px;
+    font-size: 13px; color: var(--muted); line-height: 1.6;
+  }
+  .free-cta-band {
+    margin: 56px 48px 0; padding: 32px; border-radius: 12px;
+    background: var(--cream); border: 1px solid var(--sand);
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px;
+    max-width: 1120px;
+  }
+  .free-cta-band h3 { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+  .free-cta-band p { font-size: 14px; color: var(--muted); margin-top: 4px; }
+  .free-cta-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  @media (max-width: 768px) {
+    .free-intro, .perk-section, .free-note { padding-left: 20px; padding-right: 20px; }
+    .free-cta-band { margin-left: 20px; margin-right: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="site-nav"></div>
+
+<header class="page-header">
+  <h1>Free<br><em>Perks</em></h1>
+  <div class="header-meta">
+    <p>For ClawCamp Builders</p>
+    <p>Partner Credits</p>
+    <p>Bring a Project</p>
+  </div>
+</header>
+
+<div class="free-intro">
+  <p>ClawCamp partners hand every builder in the network free credits and tools to ship with. No application &mdash; grab a code below and start building.</p>
+</div>
+
+<div class="perk-section">
+  <div class="perk-grid">
+
+    <!-- Nebius Token Factory -->
+    <div class="perk-card">
+      <div class="perk-eyebrow">Inference</div>
+      <div class="perk-brand">Nebius</div>
+      <h2 class="perk-title">Token Factory</h2>
+      <span class="perk-amount">$50&ndash;$100 in credits</span>
+      <p class="perk-desc">Fast, low-cost inference across 40+ open models to power your agents and apps. Activate with the code below to get started.</p>
+      <div class="perk-label">Activation code</div>
+      <button type="button" class="code-chip" data-code="BUILDER-SHIP-HACK" onclick="copyCode(this)">
+        <span class="code-text">BUILDER-SHIP-HACK</span>
+        <span class="code-copy">Copy</span>
+      </button>
+      <a class="btn-rust perk-cta" href="https://nebius.com/promo-code?utm_promo_event_code=2026-06-builder-ship-hack-sf&amp;utm_promo_product_type=Token_Factory&amp;utm_promo_activation_code=BUILDER-SHIP-HACK&amp;referrer=luma&amp;utm_source=luma" target="_blank" rel="noopener">Activate &rarr;</a>
+    </div>
+
+    <!-- Nebius AI Cloud -->
+    <div class="perk-card">
+      <div class="perk-eyebrow">GPU &amp; Serverless</div>
+      <div class="perk-brand">Nebius</div>
+      <h2 class="perk-title">AI Cloud</h2>
+      <span class="perk-amount">$100 in credits</span>
+      <p class="perk-desc">GPU and serverless compute credits for training, fine-tuning, and inference. Enter the Serverless AI Builders Challenge to claim.</p>
+      <div class="perk-label">How to claim</div>
+      <div class="code-chip" style="cursor:default;">
+        <span class="code-text">Serverless AI Builders Challenge</span>
+      </div>
+      <a class="btn-rust perk-cta" href="https://nebius.com/promo-code?utm_promo_event_code=2026-05-serverless-challenge&amp;utm_promo_code_type=Ai_Cloud&amp;utm_promo_activation_code=nebius-serverless-challenge&amp;_hsmi=136758221" target="_blank" rel="noopener">Enter the Challenge &rarr;</a>
+    </div>
+
+    <!-- Tavily -->
+    <div class="perk-card">
+      <div class="perk-eyebrow">Web Search</div>
+      <div class="perk-brand">Tavily</div>
+      <h2 class="perk-title">Search &amp; Extract API</h2>
+      <span class="perk-amount">Bonus credits on upgrade</span>
+      <p class="perk-desc">Real-time web search and content extraction built for AI agents. Sign up, then upgrade with the code below for bonus credits.</p>
+      <div class="perk-label">Upgrade code</div>
+      <button type="button" class="code-chip" data-code="TVLY-7CCN692Z" onclick="copyCode(this)">
+        <span class="code-text">TVLY-7CCN692Z</span>
+        <span class="code-copy">Copy</span>
+      </button>
+      <a class="btn-rust perk-cta" href="https://tavily.com" target="_blank" rel="noopener">Sign up at tavily.com &rarr;</a>
+    </div>
+
+  </div>
+</div>
+
+<p class="free-note">Perks are provided by ClawCamp partners. Codes may have limited redemptions or expiry dates &mdash; claim early. Each is subject to the partner's own terms.</p>
+
+<div class="free-cta-band">
+  <div>
+    <h3>Building something with these?</h3>
+    <p>Find a camp near you, or bring your project to the next event.</p>
+  </div>
+  <div class="free-cta-actions">
+    <a href="/events" class="btn-dark">Find an Event &rarr;</a>
+    <a href="/chapters" class="btn-outline">Browse Chapters</a>
+  </div>
+</div>
+
+<div class="spacer"></div>
+
+<div id="site-footer"></div>
+
+<script>
+  // Copy a promo code to the clipboard with a brief "Copied!" confirmation.
+  function copyCode(btn) {
+    var code = btn.getAttribute('data-code');
+    var label = btn.querySelector('.code-copy');
+    function done(ok) {
+      if (label) label.textContent = ok ? 'Copied!' : 'Press Ctrl+C';
+      btn.classList.toggle('copied', ok);
+      setTimeout(function () {
+        if (label) label.textContent = 'Copy';
+        btn.classList.remove('copied');
+      }, 1600);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code).then(function () { done(true); }, function () { done(false); });
+    } else {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = code; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+        done(true);
+      } catch (e) { done(false); }
+    }
+  }
+</script>
+<script src="/js/config.js"></script>
+<script src="/js/nav.js"></script>
+</body>
+</html>
