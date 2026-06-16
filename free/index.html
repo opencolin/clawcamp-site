@@ -105,9 +105,45 @@
   .free-cta-band p { font-size: 14px; color: var(--muted); margin-top: 4px; }
   .free-cta-actions { display: flex; gap: 12px; flex-wrap: wrap; }
 
+  /* How-to-redeem walkthroughs */
+  .redeem-section { padding: 8px 48px 0; max-width: 1120px; }
+  .redeem-section > h2 {
+    font-size: clamp(22px, 3vw, 30px); font-weight: 800; letter-spacing: -0.02em;
+    color: var(--ink); margin: 44px 0 4px;
+  }
+  .redeem-sub { font-size: 15px; color: var(--muted); margin-bottom: 4px; }
+  .redeem-block { border-top: 1px solid var(--sand); padding: 28px 0 4px; margin-top: 20px; }
+  .redeem-block h3 { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; color: var(--ink); margin-bottom: 8px; }
+  .redeem-brand { color: var(--rust); }
+  .redeem-intro { font-size: 14.5px; color: var(--muted); line-height: 1.6; margin-bottom: 16px; max-width: 640px; }
+  .redeem-steps { margin: 0 0 22px; padding-left: 0; list-style: none; counter-reset: step; max-width: 640px; }
+  .redeem-steps li {
+    position: relative; padding: 6px 0 6px 38px; font-size: 15px; color: var(--ink); line-height: 1.55; counter-increment: step;
+  }
+  .redeem-steps li::before {
+    content: counter(step); position: absolute; left: 0; top: 4px; width: 24px; height: 24px; border-radius: 50%;
+    background: var(--rust); color: #fff; font-family: 'DM Mono', monospace; font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .redeem-steps code {
+    font-family: 'DM Mono', monospace; font-size: 13px; background: var(--cream);
+    border: 1px solid var(--sand); border-radius: 4px; padding: 1px 6px;
+  }
+  .redeem-gifs { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
+  .redeem-gif { display: block; border: 1px solid var(--sand); border-radius: 10px; background: var(--cream); height: auto; max-width: 100%; }
+  .gif-portrait { max-height: 480px; }
+  .gif-landscape { max-width: 520px; width: 100%; }
+  .gif-wide { max-width: 760px; width: 100%; }
+  .perk-howto {
+    display: inline-block; margin-top: 12px; font-family: 'DM Mono', monospace; font-size: 12px;
+    color: var(--muted); text-decoration: none; border-bottom: 1px dotted var(--sand);
+  }
+  .perk-howto:hover { color: var(--rust); border-bottom-color: var(--rust); }
+
   @media (max-width: 768px) {
-    .free-intro, .perk-section, .free-note { padding-left: 20px; padding-right: 20px; }
+    .free-intro, .perk-section, .free-note, .redeem-section { padding-left: 20px; padding-right: 20px; }
     .free-cta-band { margin-left: 20px; margin-right: 20px; }
+    .gif-portrait { max-height: 72vh; }
   }
 </style>
 </head>
@@ -144,6 +180,7 @@
         <span class="code-copy">Copy</span>
       </button>
       <a class="btn-rust perk-cta" href="https://nebius.com/promo-code?utm_promo_event_code=2026-06-builder-ship-hack-sf&amp;utm_promo_product_type=Token_Factory&amp;utm_promo_activation_code=BUILDER-SHIP-HACK&amp;referrer=luma&amp;utm_source=luma" target="_blank" rel="noopener">Activate &rarr;</a>
+      <a class="perk-howto" href="#redeem-token-factory">How to apply the code &darr;</a>
     </div>
 
     <!-- Nebius AI Cloud -->
@@ -158,6 +195,7 @@
         <span class="code-text">Serverless AI Builders Challenge</span>
       </div>
       <a class="btn-rust perk-cta" href="https://nebius.com/promo-code?utm_promo_event_code=2026-05-serverless-challenge&amp;utm_promo_code_type=Ai_Cloud&amp;utm_promo_activation_code=nebius-serverless-challenge&amp;_hsmi=136758221" target="_blank" rel="noopener">Enter the Challenge &rarr;</a>
+      <a class="perk-howto" href="#redeem-ai-cloud">How to find your Tenant ID &darr;</a>
     </div>
 
     <!-- Tavily -->
@@ -175,6 +213,38 @@
       <a class="btn-rust perk-cta" href="https://tavily.com" target="_blank" rel="noopener">Sign up at tavily.com &rarr;</a>
     </div>
 
+  </div>
+</div>
+
+<div class="redeem-section">
+  <h2>How to redeem</h2>
+  <p class="redeem-sub">Quick walkthroughs for the Nebius credits.</p>
+
+  <div class="redeem-block" id="redeem-token-factory">
+    <h3><span class="redeem-brand">Token Factory</span> &mdash; apply your promo code</h3>
+    <p class="redeem-intro">Once you're signed in to Nebius Token Factory, add the credits to your balance:</p>
+    <ol class="redeem-steps">
+      <li>Click the <strong>Profile icon</strong> in the top-right corner</li>
+      <li>Click <strong>+ Top up</strong></li>
+      <li>Click <strong>With promo code</strong></li>
+      <li>Paste the promo code (<code>BUILDER-SHIP-HACK</code>)</li>
+      <li>Click <strong>Apply promo code</strong></li>
+    </ol>
+    <div class="redeem-gifs">
+      <img class="redeem-gif gif-portrait" src="/images/free/tokenfactory-pt1.gif" alt="Open the profile menu and click + Top up in Nebius Token Factory" loading="lazy">
+      <img class="redeem-gif gif-landscape" src="/images/free/tokenfactory-pt2.gif" alt="Choose With promo code, paste the code, and click Apply promo code" loading="lazy">
+    </div>
+  </div>
+
+  <div class="redeem-block" id="redeem-ai-cloud">
+    <h3><span class="redeem-brand">AI Cloud</span> &mdash; find your Tenant ID</h3>
+    <p class="redeem-intro">The Serverless AI Builders Challenge asks for your Nebius Tenant ID. Here's how to copy it from the console:</p>
+    <ol class="redeem-steps">
+      <li>Click the <strong>Tenant name</strong> at the top of the page</li>
+      <li>Click the <strong>three dots</strong> to display the menu</li>
+      <li>Click <strong>Copy Tenant ID</strong></li>
+    </ol>
+    <img class="redeem-gif gif-wide" src="/images/free/aicloud.gif" alt="Click the tenant name, open the three-dots menu, and click Copy Tenant ID" loading="lazy">
   </div>
 </div>
 
