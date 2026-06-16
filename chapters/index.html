@@ -541,6 +541,71 @@ function chapterLocation(ch) {
 }
 
 // ===========================================================================
+// STATIC CHAPTER CONTENT (pulled from clawcamp.us). Keyed by slug. Overrides /
+// supplements the Supabase chapter row (name, blurb, location, cover) and
+// supplies a static event list so these chapters show their events without
+// depending on the events table. renderDetail prefers this; renderGrid injects
+// any chapter missing from the DB so it still gets a card.
+// ===========================================================================
+var EV_IMG = 'https://images.lumacdn.com/cdn-cgi/image/format=auto,fit=cover,dpr=2,background=white,quality=75,width=400,height=400/';
+var CHAPTER_INFO = {
+  'san-francisco': {
+    name: 'ClawCamp San Francisco',
+    location: 'San Francisco, California, US',
+    blurb: 'A community of AI builders, learners, and creators in the Bay Area passionate about personal AI agents, OpenClaw, and the future of human-computer interaction. Join us to build, learn, and grow together.',
+    events: [
+      { name: 'ClawCamp Global Summer Camp Passport', event_date: '2026-06-20', event_type: 'flagship', city: 'san-francisco', is_external: true, link: 'https://luma.com/clawcamp-global-passport', image_url: EV_IMG + 'uploads/a8/09ab0f1b-fc7b-4eda-9c98-e83965e3ecfd.jpg', location: 'San Francisco & Worldwide', time_range: 'Jun 20 – Aug 2026', description: 'A season-long passport to ClawCamp Summer Camp events worldwide.' },
+      { name: 'ClawCamp Campout @ Dual Tech Summit 2026', event_date: '2026-06-24', event_type: 'community', city: 'san-francisco', is_external: true, link: 'https://luma.com/dualtechsummitjune26', image_url: EV_IMG + 'uploads/aj/0b113202-6c8a-458e-bdd0-ca6fa1ae5175.png', location: '401 Van Ness Ave, San Francisco', time_range: '9:00 AM – 5:00 PM', description: 'ClawCamp Campout at the Dual Tech Summit — where commercial tech meets the defense and public sector.' },
+      { name: 'ClawCamp SF Summer Camp Week', event_date: '2026-08-01', event_type: 'flagship', city: 'san-francisco', is_external: true, link: 'https://luma.com/clawcamp-passport', image_url: EV_IMG + 'uploads/fo/565c88ea-0d4a-409e-8b1f-8605bd2b29bd.jpg', location: 'San Francisco, CA', time_range: 'Aug 1 – Aug 9', description: 'A week of ClawCamp Summer Camp events in San Francisco (Aug 1–9).' }
+    ]
+  },
+  'miami': {
+    name: 'ClawCamp Miami',
+    location: 'Miami, Florida, US',
+    emoji: '🦞',
+    cover_gradient: 'linear-gradient(135deg,#2c3e50 0%,#fd746c 55%,#ff9068 100%)',
+    blurb: 'Miami’s community of AI builders and creators exploring personal AI agents, OpenClaw, and hands-on agent workflows. Join us to build and connect across South Florida.',
+    events: [
+      { name: 'ClawMax.ai × Mango Grove Estate Workshop #1', event_date: '2026-07-07', event_type: 'workshop', city: 'miami', is_external: true, link: 'https://luma.com/clawmax-mangogrove1', image_url: EV_IMG + 'uploads/f0/b3d2eeba-1604-404a-984f-51c8f22537ab.jpg', location: 'Miami, FL', time_range: '6:00 PM – 9:00 PM', description: 'Hands-on workshop on building and orchestrating AI agent teams at the Mango Grove Estate.' },
+      { name: 'ClawMax.ai × Mango Grove Estate Workshop #2', event_date: '2026-07-13', event_type: 'workshop', city: 'miami', is_external: true, link: 'https://luma.com/clawmax-mangogrove2', image_url: EV_IMG + 'uploads/f0/b3d2eeba-1604-404a-984f-51c8f22537ab.jpg', location: 'Miami, FL', time_range: '6:00 PM – 9:00 PM', description: 'Part 2 of the hands-on workshop on building and orchestrating AI agent teams.' }
+    ]
+  },
+  'barbados': {
+    name: 'ClawCamp Barbados',
+    location: 'Barbados',
+    emoji: '🌴',
+    cover_gradient: 'linear-gradient(135deg,#1a2980 0%,#26d0ce 100%)',
+    blurb: 'The Caribbean’s ClawCamp chapter, based in Barbados — building the regional AI-builder community and bringing personal AI agents to the islands.',
+    events: [
+      { name: 'Future Caribbean: 3-Week Global Buildathon', event_date: '2026-07-06', event_type: 'workshop', city: 'barbados', is_external: true, link: 'https://clawcamp.us/event/future-caribbean/', image_url: 'https://clawcamp.us/wp-content/uploads/clawcamp/events/260603_futurecaribbean-eventimagelarge_c91dd4a1.jpg', location: 'Virtual · Caribbean', time_range: 'Jul 6 – Jul 27', description: 'A 3-week global buildathon with a $120K prize pool and rolling enrollment.' }
+    ]
+  }
+};
+
+// Render a static event list (from CHAPTER_INFO) into the Upcoming/Past panels,
+// splitting by date — mirrors loadChapterEvents but with no network call.
+function renderStaticChapterEvents(events) {
+  var up = document.getElementById('chd-events');
+  var past = document.getElementById('chd-past-events');
+  var today = todayStr();
+  up.textContent = ''; past.textContent = '';
+  var upcoming = [], pastEvs = [];
+  (events || []).forEach(function(ev) {
+    if (!ev.event_date || ev.event_date >= today) upcoming.push(ev); else pastEvs.push(ev);
+  });
+  upcoming.sort(function(a, b) { return (a.event_date || '').localeCompare(b.event_date || ''); });
+  pastEvs.sort(function(a, b) { return (b.event_date || '').localeCompare(a.event_date || ''); });
+  if (!upcoming.length) {
+    var e1 = document.createElement('p'); e1.className = 'chd-events-empty';
+    e1.textContent = 'No upcoming events scheduled yet — follow this chapter to get notified.'; up.appendChild(e1);
+  } else { upcoming.forEach(function(ev) { up.appendChild(renderEventRow(ev)); }); }
+  if (!pastEvs.length) {
+    var e2 = document.createElement('p'); e2.className = 'chd-events-empty';
+    e2.textContent = 'No past events yet — check back after the next event.'; past.appendChild(e2);
+  } else { pastEvs.forEach(function(ev) { past.appendChild(renderEventRow(ev)); }); }
+}
+
+// ===========================================================================
 // SHARED DATA: fetch all chapters once, then either render the grid or the
 // per-chapter detail view depending on whether ?slug is present.
 // ===========================================================================
@@ -594,6 +659,15 @@ function renderGrid(chapters, stats) {
   if (!chapters || !chapters.length) {
     chapters = FALLBACK_CHAPTERS;
   }
+
+  // Ensure static chapters (clawcamp.us content) always have a card, even if
+  // they're not in the DB yet (e.g. Miami, Barbados).
+  Object.keys(CHAPTER_INFO).forEach(function(s) {
+    if (!chapters.some(function(c) { return String(c.slug) === s; })) {
+      var ci = CHAPTER_INFO[s];
+      chapters.push({ slug: s, name: ci.name, city: ci.location, emoji: ci.emoji || '🦞', cover_gradient: ci.cover_gradient || '', blurb: ci.blurb });
+    }
+  });
 
   // Index stats by slug (preferred) and id so we can join either way.
   var statsBySlug = {};
@@ -732,6 +806,17 @@ function renderDetail(chapters, slug, stats) {
     if (ch.slug != null && String(ch.slug) === String(slug)) match = ch;
   });
 
+  // Static chapter content (clawcamp.us) overrides/supplements the DB row, and
+  // stands in for it entirely when the chapter isn't in the DB (e.g. Barbados).
+  var info = CHAPTER_INFO[slug];
+  if (!match && info) match = { slug: slug };
+  if (match && info) {
+    if (info.name) match.name = info.name;
+    if (info.blurb) match.blurb = info.blurb;
+    if (info.emoji) match.emoji = info.emoji;
+    if (info.cover_gradient && !match.cover_gradient) match.cover_gradient = info.cover_gradient;
+  }
+
   if (!match) {
     document.getElementById('chapter-notfound').classList.add('visible');
     document.title = 'Chapter not found — ClawCamp';
@@ -748,9 +833,11 @@ function renderDetail(chapters, slug, stats) {
     if (s.chapter_id != null) statsById[s.chapter_id] = s;
   });
   var stat = statsBySlug[match.slug] || statsById[match.id] || {};
+  // Static chapters: surface the count of curated events as "events hosted".
+  if (info) stat = { events_hosted: (info.events ? info.events.length : numOr(stat.events_hosted, 0)), total_attendees: numOr(stat.total_attendees, 0) };
 
   var name = match.name || 'ClawCamp Chapter';
-  var location = chapterLocation(match);
+  var location = (info && info.location) ? info.location : chapterLocation(match);
   var emoji = match.emoji || '🦞';
 
   // Head / meta
@@ -792,9 +879,13 @@ function renderDetail(chapters, slug, stats) {
   // behaviour is unchanged.
   buildEventTabs();
 
-  // Upcoming + Past events for this chapter, joined via events.chapter_id.
-  loadChapterEvents(match.id);
-  loadChapterPastEvents(match.id);
+  // Static chapters render their curated event list; others join via chapter_id.
+  if (info && info.events) {
+    renderStaticChapterEvents(info.events);
+  } else {
+    loadChapterEvents(match.id);
+    loadChapterPastEvents(match.id);
+  }
 }
 
 // Build a single momentum stat item: a bold number + a muted label, all via
