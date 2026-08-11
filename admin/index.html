@@ -164,8 +164,88 @@
     margin-top: 12px;
   }
 
+  /* --- Form submissions panel (contacts) ---------------------------------- */
+  .adm-section-head {
+    padding: 32px 48px 0;
+    max-width: 900px;
+    border-top: 1px solid var(--sand);
+    margin-top: 24px;
+  }
+  .adm-section-head .adm-title { font-size: clamp(22px, 4vw, 30px); }
+  .adm-filters {
+    padding: 16px 48px 0;
+    max-width: 900px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .adm-chip {
+    border: 1px solid var(--sand);
+    background: var(--surface);
+    color: var(--muted);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .adm-chip:hover { border-color: var(--rust); color: var(--ink); }
+  .adm-chip.active { background: var(--rust); border-color: var(--rust); color: #fff; }
+  .adm-subs {
+    padding: 20px 48px 64px;
+    max-width: 900px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .adm-sub-card {
+    border: 1px solid var(--sand);
+    border-radius: 12px;
+    padding: 18px 20px;
+    background: var(--surface);
+  }
+  .adm-sub-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .adm-sub-name {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
+  }
+  .adm-sub-type {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: var(--sand);
+    color: var(--ink);
+    border-radius: 4px;
+    padding: 2px 7px;
+  }
+  .adm-sub-when { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); margin-left: auto; }
+  .adm-sub-contact {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--rust);
+    overflow-wrap: anywhere;
+    margin-bottom: 8px;
+  }
+  /* Free-text fields are untrusted public input: rendered via textContent, and
+     wrapped so a pasted wall of text cannot blow out the card. */
+  .adm-sub-fields { display: grid; gap: 6px; }
+  .adm-sub-field { font-size: 13.5px; line-height: 1.55; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .adm-sub-field b { font-weight: 600; color: var(--muted); font-weight: 500; }
+
   @media (max-width: 768px) {
-    .adm-header, .adm-queue { padding-left: 20px; padding-right: 20px; }
+    .adm-header, .adm-queue, .adm-section-head, .adm-filters, .adm-subs {
+      padding-left: 20px; padding-right: 20px;
+    }
   }
 </style>
 </head>
@@ -190,6 +270,16 @@
     <div class="adm-sub">Submitted events awaiting approval. Approve to publish, reject to decline.</div>
   </div>
   <div class="adm-queue" id="adm-queue"></div>
+
+  <!-- Form submissions (contacts). Populated by loadSubmissions(); requires the
+       contacts_select_admin RLS policy from migration 0012 — without it this
+       panel shows only the admin's own row. -->
+  <div class="adm-section-head">
+    <div class="adm-title">Form <em>Submissions</em></div>
+    <div class="adm-sub" id="adm-subs-count">Loading submissions…</div>
+  </div>
+  <div class="adm-filters" id="adm-filters"></div>
+  <div class="adm-subs" id="adm-subs"></div>
 </div>
 
 <div id="site-footer"></div>
@@ -443,6 +533,195 @@
     });
   }
 
+  // ===========================================================================
+  // FORM SUBMISSIONS PANEL (contacts)
+  // ===========================================================================
+  // Every public form on the site POSTs into `contacts` (js/supabase.js). Those
+  // writes have always worked, but 0001's only SELECT policy was
+  // contacts_select_own — so an admin querying this table saw exactly one row
+  // (their own) and the submissions looked like they were never arriving.
+  // Migration 0012 adds contacts_select_admin (gated on is_claw_admin()); this
+  // panel is the UI that reads through it.
+  //
+  // COLUMN ALLOWLIST: the select below is explicit and NEVER requests
+  // verification_token / magic_link_token. RLS is row-level, so an admin JWT
+  // *could* read those columns — not asking for them is the control here. Do not
+  // replace this list with `select=*`.
+  var SUB_COLUMNS = [
+    'id','created_at','form_type','name','email','phone','city','company','title',
+    'role','bio','linkedin','website','format','proposed_date','venue','about',
+    'event_details','event_link','tier','event','offers','message','experience',
+    'why','topic','interests','experience_level','preferred_event','stage',
+    'description','pitch','demo_ready','expertise','partnership_type','email_opt_in'
+  ].join(',');
+
+  // Long-form fields worth showing on the card, in display order. Anything not
+  // listed (and empty values) is skipped so cards stay scannable.
+  var SUB_DETAIL_FIELDS = [
+    ['company','Company'], ['title','Title'], ['role','Role'], ['city','City'],
+    ['tier','Tier'], ['event','Event'], ['format','Format'], ['venue','Venue'],
+    ['proposed_date','Proposed date'], ['stage','Stage'], ['topic','Topic'],
+    ['expertise','Expertise'], ['partnership_type','Partnership'],
+    ['experience_level','Experience level'], ['interests','Interests'],
+    ['preferred_event','Preferred event'], ['demo_ready','Demo ready'],
+    ['website','Website'], ['linkedin','LinkedIn'], ['event_link','Event link'],
+    ['about','About'], ['bio','Bio'], ['description','Description'],
+    ['pitch','Pitch'], ['experience','Experience'],
+    ['why','Why'], ['event_details','Event details'], ['offers','Offers'],
+    ['message','Message']
+  ];
+
+  var allSubmissions = [];
+  var activeFormType = 'all';
+  var subsEl = document.getElementById('adm-subs');
+  var filtersEl = document.getElementById('adm-filters');
+  var subsCountEl = document.getElementById('adm-subs-count');
+
+  function fmtWhen(ts) {
+    if (!ts) return '';
+    var d = new Date(ts);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  // Build one submission card. Same stored-XSS invariant as renderCard(): every
+  // user-supplied value goes through textContent, never innerHTML. These are
+  // untrusted public submissions.
+  function renderSubCard(c) {
+    var card = document.createElement('div');
+    card.className = 'adm-sub-card';
+
+    var top = document.createElement('div');
+    top.className = 'adm-sub-top';
+
+    var name = document.createElement('span');
+    name.className = 'adm-sub-name';
+    name.textContent = c.name || '(no name given)';
+    top.appendChild(name);
+
+    var type = document.createElement('span');
+    type.className = 'adm-sub-type';
+    type.textContent = c.form_type || 'unknown';
+    top.appendChild(type);
+
+    var when = document.createElement('span');
+    when.className = 'adm-sub-when';
+    when.textContent = fmtWhen(c.created_at);
+    top.appendChild(when);
+
+    card.appendChild(top);
+
+    if (c.email || c.phone) {
+      var contact = document.createElement('div');
+      contact.className = 'adm-sub-contact';
+      // Plain text, not a mailto: link — an admin should not one-click-reply to
+      // an unverified address straight out of the moderation view.
+      contact.textContent = [c.email, c.phone].filter(Boolean).join('  ·  ');
+      card.appendChild(contact);
+    }
+
+    var fields = document.createElement('div');
+    fields.className = 'adm-sub-fields';
+    var shown = {};
+    SUB_DETAIL_FIELDS.forEach(function(pair) {
+      var key = pair[0], label = pair[1];
+      if (shown[key]) return;              // guard: never print the same field twice
+      var val = c[key];
+      if (val === null || val === undefined || val === '') return;
+      shown[key] = true;
+      var row = document.createElement('div');
+      row.className = 'adm-sub-field';
+      var b = document.createElement('b');
+      b.textContent = label + ': ';
+      row.appendChild(b);
+      row.appendChild(document.createTextNode(String(val)));
+      fields.appendChild(row);
+    });
+    if (fields.childNodes.length) card.appendChild(fields);
+
+    return card;
+  }
+
+  function renderSubmissions() {
+    var rows = activeFormType === 'all'
+      ? allSubmissions
+      : allSubmissions.filter(function(c) { return (c.form_type || 'unknown') === activeFormType; });
+
+    subsEl.textContent = '';
+    if (!rows.length) {
+      var box = document.createElement('div');
+      box.className = 'adm-empty';
+      var big = document.createElement('div');
+      big.className = 'big';
+      big.textContent = '📭'; // open mailbox with lowered flag
+      box.appendChild(big);
+      var p = document.createElement('p');
+      p.textContent = 'No form submissions to show.';
+      box.appendChild(p);
+      subsEl.appendChild(box);
+      return;
+    }
+    rows.forEach(function(c) { subsEl.appendChild(renderSubCard(c)); });
+  }
+
+  function renderFilters() {
+    var counts = {};
+    allSubmissions.forEach(function(c) {
+      var t = c.form_type || 'unknown';
+      counts[t] = (counts[t] || 0) + 1;
+    });
+    var types = Object.keys(counts).sort(function(a, b) { return counts[b] - counts[a]; });
+    types.unshift('all');
+
+    filtersEl.textContent = '';
+    types.forEach(function(t) {
+      var btn = document.createElement('button');
+      btn.className = 'adm-chip' + (t === activeFormType ? ' active' : '');
+      btn.type = 'button';
+      btn.textContent = t === 'all' ? 'all (' + allSubmissions.length + ')' : t + ' (' + counts[t] + ')';
+      btn.addEventListener('click', function() {
+        activeFormType = t;
+        renderFilters();
+        renderSubmissions();
+      });
+      filtersEl.appendChild(btn);
+    });
+  }
+
+  function loadSubmissions() {
+    // Newest first, capped — this table is the full CRM history, so an unbounded
+    // read would pull thousands of rows into the page.
+    authFetch(SUPABASE_URL + '/rest/v1/contacts?select=' + SUB_COLUMNS +
+      '&order=created_at.desc&limit=250', { headers: {} })
+    .then(function(r) {
+      if (!r) return null;
+      if (!r.ok) {
+        // The expected failure before migration 0012 is applied: the request
+        // succeeds but RLS returns only the admin's own row, or PostgREST 401s.
+        subsCountEl.textContent =
+          'Could not load submissions — apply migration 0012 (contacts_select_admin) and confirm your admin membership.';
+        return null;
+      }
+      return r.json();
+    })
+    .then(function(rows) {
+      if (!rows) return;
+      allSubmissions = rows;
+      if (!rows.length) {
+        subsCountEl.textContent =
+          'No rows visible. If the forms are receiving traffic, migration 0012 may not be applied yet.';
+      } else {
+        subsCountEl.textContent = 'Showing ' + rows.length +
+          (rows.length === 250 ? ' most recent submissions (capped).' : ' submissions, newest first.');
+      }
+      renderFilters();
+      renderSubmissions();
+    })
+    .catch(function() {
+      subsCountEl.textContent = 'Could not load submissions. Please try again.';
+    });
+  }
+
   // Gate: require a session AND allowlist membership before rendering anything.
   // Non-admins / anon are redirected to /get-involved (exit criterion:
   // "non-admins are redirected"). The redirect — not this page's markup — is
@@ -460,6 +739,7 @@
     }
     document.getElementById('adm-email').textContent = 'Signed in as ' + email;
     loadQueue();
+    loadSubmissions();
   }
 
   // Handle the magic-link hash callback, exactly like the dashboard does.

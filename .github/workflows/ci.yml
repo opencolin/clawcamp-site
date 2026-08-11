@@ -109,10 +109,14 @@ jobs:
           done
           echo "static server did not come up in time"; cat /tmp/serve.log; exit 1
 
-      - name: XSS + a11y specs (blocking)
+      # admin-submissions asserts the /admin contacts panel never requests the
+      # verification_token / magic_link_token columns (and renders hostile
+      # submissions inert). It needs the LOCAL build, so it belongs in this
+      # localhost-served step rather than the default prod baseURL.
+      - name: XSS + a11y + admin-submissions specs (blocking)
         env:
           BASE_URL: http://localhost:8080
-        run: npx playwright test tests/xss.spec.js tests/a11y.spec.js
+        run: npx playwright test tests/xss.spec.js tests/a11y.spec.js tests/admin-submissions.spec.js
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
